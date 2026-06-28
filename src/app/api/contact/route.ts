@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
       const resend = new Resend(process.env.RESEND_API_KEY);
 
       await resend.emails.send({
-        from: "Axiploy Website <noreply@axiploy.com.au>",
+        from: "Axiploy Website <onboarding@resend.dev>",
         to: process.env.CONTACT_EMAIL || "hello@axiploy.com.au",
         subject: `New Enquiry from ${name}${company ? ` — ${company}` : ""}`,
         html: `
