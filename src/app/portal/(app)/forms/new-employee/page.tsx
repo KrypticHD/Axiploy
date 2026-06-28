@@ -21,6 +21,8 @@ const REQUIRED_DOCS = [
 export default function NewEmployeePage() {
   const router = useRouter();
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const [selectedDocs, setSelectedDocs] = useState<string[]>(REQUIRED_DOCS.slice(0, 4));
 
   function toggleDoc(doc: string) {
@@ -29,13 +31,36 @@ export default function NewEmployeePage() {
     );
   }
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    // In production: POST to API → insert to DB → fire n8n webhook
-    setTimeout(() => {
+    setSubmitting(true);
+    setError("");
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    const body = {
+      name: data.get("name"),
+      email: data.get("email"),
+      phone: data.get("phone"),
+      role: data.get("role"),
+      department: data.get("department"),
+      manager: data.get("manager"),
+      startDate: data.get("startDate"),
+      notes: data.get("notes"),
+      requiredDocs: selectedDocs,
+    };
+    try {
+      const res = await fetch("/api/portal/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Failed to save");
       setSubmitted(true);
       setTimeout(() => router.push("/portal/onboarding"), 2000);
-    }, 800);
+    } catch {
+      setError("Something went wrong. Please try again.");
+      setSubmitting(false);
+    }
   }
 
   if (submitted) {
@@ -126,11 +151,13 @@ export default function NewEmployeePage() {
           />
         </div>
 
+        {error && <p className="text-red-400 text-sm text-center">{error}</p>}
         <button
           type="submit"
-          className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white font-semibold text-sm transition-all duration-200 shadow-lg shadow-accent-blue/25"
+          disabled={submitting}
+          className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-accent-blue hover:bg-accent-blue-light disabled:opacity-60 text-white font-semibold text-sm transition-all duration-200 shadow-lg shadow-accent-blue/25"
         >
-          Add Employee & Start Onboarding
+          {submitting ? "Saving..." : "Add Employee & Start Onboarding"}
         </button>
       </form>
     </div>
