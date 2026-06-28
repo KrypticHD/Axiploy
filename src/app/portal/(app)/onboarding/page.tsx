@@ -1,15 +1,59 @@
 import MetricCard from "@/components/portal/MetricCard";
 import EmployeeTable from "@/components/portal/EmployeeTable";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { UserCheck, Clock, FileX, AlertTriangle, CalendarDays, Timer, FilePlus } from "lucide-react";
 import { MOCK_ONBOARDING } from "@/lib/mock-data";
+import { supabaseAdmin } from "@/lib/supabase";
 
-export default function OnboardingPage() {
-  const active = MOCK_ONBOARDING.filter((r) => !["Complete", "Cancelled"].includes(r.status)).length;
-  const completed = MOCK_ONBOARDING.filter((r) => r.status === "Complete").length;
-  const missingDocs = MOCK_ONBOARDING.reduce((acc, r) => acc + r.missingDocuments, 0);
-  const highRisk = MOCK_ONBOARDING.filter((r) => ["High", "Critical"].includes(r.riskLevel)).length;
-  const startingThisWeek = MOCK_ONBOARDING.filter((r) => {
+async function getClientId() {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get("axiploy_session")?.value;
+  if (!raw) return null;
+  try { return JSON.parse(raw).clientId; } catch { return null; }
+}
+
+export default async function OnboardingPage() {
+  const clientId = await getClientId();
+
+  let records = MOCK_ONBOARDING;
+
+  if (clientId) {
+    const { data } = await supabaseAdmin()
+      .from("onboarding")
+      .select("*")
+      .eq("client_id", clientId)
+      .order("created_at", { ascending: false });
+
+    if (data && data.length > 0) {
+      records = data.map((r) => ({
+        id: r.id,
+        clientId: r.client_id,
+        employeeName: r.employee_name,
+        role: r.role,
+        department: r.department || "",
+        startDate: r.start_date,
+        status: r.status as "In Progress" | "Complete" | "At Risk" | "Cancelled",
+        riskLevel: r.risk_level as "Low" | "Medium" | "High" | "Critical",
+        progress: r.progress,
+        missingDocuments: r.missing_documents,
+        manager: r.manager || "",
+        email: "",
+        phone: "",
+        lastContacted: r.created_at,
+        nextAction: "",
+        documents: [],
+        communications: [],
+        notes: "",
+      }));
+    }
+  }
+
+  const active = records.filter((r) => !["Complete", "Cancelled"].includes(r.status)).length;
+  const completed = records.filter((r) => r.status === "Complete").length;
+  const missingDocs = records.reduce((acc, r) => acc + r.missingDocuments, 0);
+  const highRisk = records.filter((r) => ["High", "Critical"].includes(r.riskLevel)).length;
+  const startingThisWeek = records.filter((r) => {
     const start = new Date(r.startDate);
     const now = new Date();
     const diff = (start.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
@@ -31,7 +75,6 @@ export default function OnboardingPage() {
         </Link>
       </div>
 
-      {/* Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <MetricCard label="Active Onboardings" value={active} icon={UserCheck} accent="blue" />
         <MetricCard label="Completed This Month" value={completed} icon={Clock} accent="green" />
@@ -41,10 +84,9 @@ export default function OnboardingPage() {
         <MetricCard label="Avg. Onboarding Time" value="8 days" icon={Timer} accent="default" />
       </div>
 
-      {/* Table */}
       <div>
         <h2 className="font-heading font-semibold text-text-primary mb-4">All Employees</h2>
-        <EmployeeTable records={MOCK_ONBOARDING} />
+        <EmployeeTable records={records} />
       </div>
     </div>
   );
