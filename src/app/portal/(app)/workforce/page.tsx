@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { UserCheck, ClipboardList, TrendingUp, ArrowRight, Settings, Bot } from "lucide-react";
 import { MOCK_DIGITAL_EMPLOYEES } from "@/lib/mock-data";
 import { supabaseAdmin } from "@/lib/supabase";
+import { isEmptyPreview } from "@/lib/preview";
 
 const deIcons: Record<string, React.FC<{ size?: number; className?: string }>> = {
   onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp,
@@ -25,8 +26,8 @@ async function getClientId() {
 }
 
 export default async function WorkforcePage() {
-  const clientId = await getClientId();
-  let employees = MOCK_DIGITAL_EMPLOYEES;
+  const [clientId, emptyPreview] = await Promise.all([getClientId(), isEmptyPreview()]);
+  let employees = emptyPreview ? [] : MOCK_DIGITAL_EMPLOYEES;
 
   if (clientId) {
     const { data } = await supabaseAdmin()

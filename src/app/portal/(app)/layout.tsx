@@ -5,6 +5,7 @@ import { MessageSquare } from "lucide-react";
 import PortalSidebar from "@/components/portal/PortalSidebar";
 import PortalTopbar from "@/components/portal/PortalTopbar";
 import AskPanel from "@/components/portal/AskPanel";
+import EmptyPreviewBanner from "@/components/portal/EmptyPreviewBanner";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -19,6 +20,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
         <PortalTopbar onMenuOpen={() => setSidebarOpen(true)} />
+        <EmptyPreviewBanner />
         <main className="flex-1 overflow-y-auto p-5 lg:p-7">
           {children}
         </main>

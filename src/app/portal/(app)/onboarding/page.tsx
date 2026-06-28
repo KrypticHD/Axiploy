@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { UserCheck, Clock, FileX, AlertTriangle, CalendarDays, Timer, FilePlus } from "lucide-react";
 import { MOCK_ONBOARDING } from "@/lib/mock-data";
 import { supabaseAdmin } from "@/lib/supabase";
+import { isEmptyPreview } from "@/lib/preview";
 
 async function getClientId() {
   const cookieStore = await cookies();
@@ -14,9 +15,9 @@ async function getClientId() {
 }
 
 export default async function OnboardingPage() {
-  const clientId = await getClientId();
+  const [clientId, emptyPreview] = await Promise.all([getClientId(), isEmptyPreview()]);
 
-  let records = MOCK_ONBOARDING;
+  let records = emptyPreview ? [] : MOCK_ONBOARDING;
 
   if (clientId) {
     const { data } = await supabaseAdmin()
