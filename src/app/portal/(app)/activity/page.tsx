@@ -3,27 +3,42 @@
 import ActivityItem from "@/components/portal/ActivityItem";
 import { MOCK_ACTIVITY } from "@/lib/mock-data";
 import { Download } from "lucide-react";
-
-function downloadCSV() {
-  const headers = ["Timestamp", "Digital Employee", "Action", "Result", "Status"];
-  const rows = MOCK_ACTIVITY.map((e) => [
-    new Date(e.timestamp).toLocaleString("en-AU"),
-    e.digitalEmployee,
-    e.action,
-    e.result,
-    e.status,
-  ]);
-  const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `axiploy-activity-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
+import { useEffect, useState } from "react";
+import type { ActivityEntry } from "@/lib/types";
 
 export default function ActivityPage() {
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/portal/activity")
+      .then((r) => r.json())
+      .then((data) => {
+        setActivity(data.activity?.length > 0 ? data.activity : MOCK_ACTIVITY);
+      })
+      .catch(() => setActivity(MOCK_ACTIVITY))
+      .finally(() => setLoading(false));
+  }, []);
+
+  function downloadCSV() {
+    const headers = ["Timestamp", "Digital Employee", "Action", "Result", "Status"];
+    const rows = activity.map((e) => [
+      new Date(e.timestamp).toLocaleString("en-AU"),
+      e.digitalEmployee,
+      e.action,
+      e.result,
+      e.status,
+    ]);
+    const csv = [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `axiploy-activity-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-start justify-between">
@@ -40,7 +55,9 @@ export default function ActivityPage() {
       </div>
 
       <div className="glass rounded-2xl px-6 py-2">
-        {MOCK_ACTIVITY.map((entry) => (
+        {loading ? (
+          <div className="py-10 text-center text-text-muted text-sm">Loading activity...</div>
+        ) : activity.map((entry) => (
           <ActivityItem key={entry.id} entry={entry} />
         ))}
       </div>

@@ -8,9 +8,14 @@ function formatTime(ts: string) {
   return new Date(ts).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-export default function ApprovalCard({ approval }: { approval: Approval }) {
+export default function ApprovalCard({ approval, onAction }: { approval: Approval; onAction?: (id: string, status: "approved" | "rejected") => void }) {
   const [expanded, setExpanded] = useState(false);
   const [status, setStatus] = useState<"pending" | "approved" | "rejected">(approval.status);
+
+  function act(s: "approved" | "rejected") {
+    setStatus(s);
+    onAction?.(approval.id, s);
+  }
 
   if (status !== "pending") {
     return (
@@ -64,7 +69,7 @@ export default function ApprovalCard({ approval }: { approval: Approval }) {
 
         <div className="flex gap-2 mt-4">
           <button
-            onClick={() => setStatus("approved")}
+            onClick={() => act("approved")}
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 text-emerald-300 text-xs font-medium transition-colors"
           >
             <CheckCircle2 size={13} /> Approve
@@ -75,7 +80,7 @@ export default function ApprovalCard({ approval }: { approval: Approval }) {
             <Edit3 size={13} /> Edit
           </button>
           <button
-            onClick={() => setStatus("rejected")}
+            onClick={() => act("rejected")}
             className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 text-red-400 text-xs font-medium transition-colors"
           >
             <XCircle size={13} /> Reject
