@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-base: #050a14;
+  --color-surface: #0d1526;
+  --color-surface-2: #111d35;
+  --color-accent-blue: #2563eb;
+  --color-accent-cyan: #06b6d4;
+  --color-accent-blue-light: #3b82f6;
+  --color-text-primary: #f8fafc;
+  --color-text-muted: #94a3b8;
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+
+  --font-heading: var(--font-poppins);
+  --font-sans: var(--font-geist);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #050a14;
+  color: #f8fafc;
+  font-family: var(--font-geist), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: rgba(37, 99, 235, 0.35);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #3b82f6, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glow-blue {
+  box-shadow: 0 0 60px rgba(37, 99, 235, 0.2);
+}
+
+.glow-border {
+  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.4), 0 0 30px rgba(37, 99, 235, 0.1);
+}
