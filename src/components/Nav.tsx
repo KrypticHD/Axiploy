@@ -15,10 +15,24 @@ const links = [
 
 export default function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const [visible, setVisible] = useState(true);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 20);
+    let lastY = window.scrollY;
+    const handler = () => {
+      const y = window.scrollY;
+      setScrolled(y > 20);
+      if (y < 80) {
+        setVisible(true);
+      } else if (y > lastY + 4) {
+        setVisible(false);
+        setOpen(false);
+      } else if (y < lastY - 4) {
+        setVisible(true);
+      }
+      lastY = y;
+    };
     window.addEventListener("scroll", handler, { passive: true });
     return () => window.removeEventListener("scroll", handler);
   }, []);
@@ -29,7 +43,7 @@ export default function Nav() {
         scrolled
           ? "glass border-b border-white/[0.06] shadow-lg shadow-black/20"
           : "bg-transparent"
-      }`}
+      } ${visible ? "translate-y-0" : "-translate-y-full"}`}
     >
       <nav className="max-w-7xl mx-auto px-6 h-32 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
