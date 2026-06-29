@@ -40,7 +40,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
   const total = docs.length;
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Back + Header */}
       <div>
         <Link href="/portal/onboarding" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary text-sm transition-colors mb-4">
