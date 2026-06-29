@@ -1,23 +1,43 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import StatusPill from "@/components/portal/StatusPill";
-import { MOCK_ONBOARDING } from "@/lib/mock-data";
+import { supabaseAdmin } from "@/lib/supabase";
+import { cookies } from "next/headers";
 import {
   ArrowLeft, CheckCircle2, XCircle, Mail, Phone,
-  User, Calendar, Briefcase, AlertTriangle, Send, FileCheck, StickyNote,
+  User, Calendar, Briefcase, AlertTriangle, FileCheck, StickyNote, Send, Trash2,
 } from "lucide-react";
+import DeleteOnboardingButton from "./DeleteOnboardingButton";
 
-export default async function EmployeeDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+async function getClientId() {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get("axiploy_session")?.value;
+  if (!raw) return null;
+  try { return JSON.parse(raw).clientId; } catch { return null; }
+}
+
+export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const emp = MOCK_ONBOARDING.find((r) => r.id === id);
-  if (!emp) notFound();
+  const clientId = await getClientId();
 
-  const received = emp.documents.filter((d) => d.received).length;
-  const total = emp.documents.length;
+  const { data: emp, error } = await supabaseAdmin()
+    .from("onboarding")
+    .select("*")
+    .eq("id", id)
+    .eq("client_id", clientId)
+    .single();
+
+  if (error || !emp) notFound();
+
+  const { data: documents } = await supabaseAdmin()
+    .from("documents")
+    .select("*")
+    .eq("onboarding_id", id)
+    .order("created_at", { ascending: true });
+
+  const docs = documents || [];
+  const received = docs.filter((d) => d.received).length;
+  const total = docs.length;
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -28,12 +48,13 @@ export default async function EmployeeDetailPage({
         </Link>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="font-heading text-2xl font-bold text-text-primary">{emp.employeeName}</h1>
-            <p className="text-text-muted text-sm mt-1">{emp.role} · {emp.department} · Manager: {emp.manager}</p>
+            <h1 className="font-heading text-2xl font-bold text-text-primary">{emp.employee_name}</h1>
+            <p className="text-text-muted text-sm mt-1">{emp.role}{emp.department ? ` · ${emp.department}` : ""}{emp.manager ? ` · Manager: ${emp.manager}` : ""}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <StatusPill status={emp.status} size="md" />
-            <StatusPill status={emp.riskLevel} size="md" />
+            <StatusPill status={emp.risk_level} size="md" />
+            <DeleteOnboardingButton id={id} />
           </div>
         </div>
       </div>
@@ -46,12 +67,12 @@ export default async function EmployeeDetailPage({
             <h2 className="font-heading font-semibold text-text-primary mb-4">Employee Details</h2>
             <div className="grid grid-cols-2 gap-4">
               {[
-                { icon: User, label: "Full Name", value: emp.employeeName },
-                { icon: Mail, label: "Email", value: emp.email },
-                { icon: Phone, label: "Phone", value: emp.phone },
+                { icon: User, label: "Full Name", value: emp.employee_name },
+                { icon: Mail, label: "Email", value: emp.email || "—" },
+                { icon: Phone, label: "Phone", value: emp.phone || "—" },
                 { icon: Briefcase, label: "Role", value: emp.role },
-                { icon: Calendar, label: "Start Date", value: new Date(emp.startDate).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }) },
-                { icon: User, label: "Manager", value: emp.manager },
+                { icon: Calendar, label: "Start Date", value: emp.start_date ? new Date(emp.start_date).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }) : "—" },
+                { icon: User, label: "Manager", value: emp.manager || "—" },
               ].map((item) => (
                 <div key={item.label} className="flex items-start gap-3">
                   <item.icon size={14} className="text-text-muted mt-0.5 shrink-0" />
@@ -77,58 +98,46 @@ export default async function EmployeeDetailPage({
               <h2 className="font-heading font-semibold text-text-primary">Documents</h2>
               <span className="text-text-muted text-sm">{received}/{total} received</span>
             </div>
-            <div className="w-full bg-white/[0.04] rounded-full h-1.5 mb-5">
-              <div
-                className="bg-gradient-to-r from-accent-blue to-accent-cyan h-1.5 rounded-full transition-all"
-                style={{ width: `${(received / total) * 100}%` }}
-              />
-            </div>
-            <ul className="space-y-2.5">
-              {emp.documents.map((doc) => (
-                <li key={doc.id} className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    {doc.received ? (
-                      <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
-                    ) : (
-                      <XCircle size={15} className={`shrink-0 ${doc.required ? "text-red-400" : "text-text-muted/40"}`} />
-                    )}
-                    <span className={`text-sm ${doc.received ? "text-text-primary" : doc.required ? "text-orange-300" : "text-text-muted"}`}>
-                      {doc.name}
-                      {doc.required && !doc.received && <span className="text-red-400 ml-1 text-xs">*</span>}
-                    </span>
-                  </div>
-                  {doc.received && doc.receivedAt && (
-                    <span className="text-text-muted/60 text-xs shrink-0">
-                      {new Date(doc.receivedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Communication history */}
-          {emp.communications.length > 0 && (
-            <div className="glass rounded-2xl p-6">
-              <h2 className="font-heading font-semibold text-text-primary mb-4">Communication History</h2>
-              <div className="space-y-4">
-                {emp.communications.map((c) => (
-                  <div key={c.id} className="bg-white/[0.03] rounded-xl p-4 border border-white/[0.05]">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-text-primary text-sm font-medium">{c.subject}</p>
-                      <span className="text-text-muted/60 text-xs">
-                        {new Date(c.timestamp).toLocaleDateString("en-AU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            {total > 0 && (
+              <div className="w-full bg-white/[0.04] rounded-full h-1.5 mb-5">
+                <div
+                  className="bg-gradient-to-r from-accent-blue to-accent-cyan h-1.5 rounded-full transition-all"
+                  style={{ width: `${total > 0 ? (received / total) * 100 : 0}%` }}
+                />
+              </div>
+            )}
+            {docs.length === 0 ? (
+              <p className="text-text-muted text-sm">No documents required.</p>
+            ) : (
+              <ul className="space-y-2.5">
+                {docs.map((doc) => (
+                  <li key={doc.id} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      {doc.received ? (
+                        <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
+                      ) : (
+                        <XCircle size={15} className={`shrink-0 ${doc.required ? "text-red-400" : "text-text-muted/40"}`} />
+                      )}
+                      <span className={`text-sm ${doc.received ? "text-text-primary" : doc.required ? "text-orange-300" : "text-text-muted"}`}>
+                        {doc.name}
+                        {doc.required && !doc.received && <span className="text-red-400 ml-1 text-xs">*</span>}
                       </span>
                     </div>
-                    <p className="text-text-muted text-xs leading-relaxed">{c.body}</p>
-                    <span className={`inline-block mt-2 text-xs px-2 py-0.5 rounded-full border ${c.direction === "sent" ? "text-blue-300 border-blue-500/20 bg-blue-500/10" : "text-emerald-300 border-emerald-500/20 bg-emerald-500/10"}`}>
-                      {c.direction === "sent" ? "Sent by AI" : "Received"}
-                    </span>
-                  </div>
+                    <div className="flex items-center gap-2">
+                      {doc.received && doc.file_url && (
+                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="text-xs text-accent-blue hover:underline">View</a>
+                      )}
+                      {doc.received && doc.received_at && (
+                        <span className="text-text-muted/60 text-xs shrink-0">
+                          {new Date(doc.received_at).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                        </span>
+                      )}
+                    </div>
+                  </li>
                 ))}
-              </div>
-            </div>
-          )}
+              </ul>
+            )}
+          </div>
         </div>
 
         {/* Right: actions */}
@@ -138,9 +147,8 @@ export default async function EmployeeDetailPage({
             <div className="space-y-2.5">
               {[
                 { icon: Send, label: "Send Reminder", accent: "blue" },
-                { icon: FileCheck, label: "Mark Document Received", accent: "green" },
+                { icon: FileCheck, label: "Mark Complete", accent: "green" },
                 { icon: StickyNote, label: "Add Note", accent: "default" },
-                { icon: CheckCircle2, label: "Mark Complete", accent: "green" },
                 { icon: AlertTriangle, label: "Pause Onboarding", accent: "amber" },
               ].map((action) => {
                 const colours: Record<string, string> = {
@@ -150,10 +158,7 @@ export default async function EmployeeDetailPage({
                   default: "bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] text-text-muted",
                 };
                 return (
-                  <button
-                    key={action.label}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${colours[action.accent]}`}
-                  >
+                  <button key={action.label} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${colours[action.accent]}`}>
                     <action.icon size={15} />
                     {action.label}
                   </button>
@@ -163,14 +168,16 @@ export default async function EmployeeDetailPage({
           </div>
 
           <div className="glass rounded-2xl p-5">
-            <p className="text-text-muted text-xs font-medium mb-1">Next Recommended Action</p>
-            <p className="text-text-primary text-sm">{emp.nextAction}</p>
+            <p className="text-text-muted text-xs font-medium mb-1">Upload Link</p>
+            <p className="text-accent-blue text-xs break-all">
+              {emp.token ? `axiploy.com/onboard/${emp.token}` : "No link available"}
+            </p>
           </div>
 
           <div className="glass rounded-2xl p-5">
-            <p className="text-text-muted text-xs font-medium mb-1">Last Contacted</p>
+            <p className="text-text-muted text-xs font-medium mb-1">Added</p>
             <p className="text-text-primary text-sm">
-              {new Date(emp.lastContacted).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}
+              {new Date(emp.created_at).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>
         </div>
