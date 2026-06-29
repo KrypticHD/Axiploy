@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { OnboardingRecord, EmployeeStatus } from "@/lib/types";
 import StatusPill from "./StatusPill";
-import { Search, ChevronRight } from "lucide-react";
+import { Search, ChevronRight, Trash2 } from "lucide-react";
 
 const ALL_STATUSES: EmployeeStatus[] = [
   "New", "Welcome Sent", "In Progress", "Missing Documents",
@@ -14,6 +15,10 @@ const ALL_STATUSES: EmployeeStatus[] = [
 export default function EmployeeTable({ records }: { records: OnboardingRecord[] }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<EmployeeStatus | "All">("All");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const router = useRouter();
 
   const filtered = records.filter((r) => {
     const matchSearch =
@@ -23,6 +28,37 @@ export default function EmployeeTable({ records }: { records: OnboardingRecord[]
     const matchFilter = filter === "All" || r.status === filter;
     return matchSearch && matchFilter;
   });
+
+  const allSelected = filtered.length > 0 && filtered.every((r) => selected.has(r.id));
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map((r) => r.id)));
+    }
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    setDeleting(true);
+    await Promise.all(
+      Array.from(selected).map((id) =>
+        fetch(`/api/portal/onboarding/${id}`, { method: "DELETE" })
+      )
+    );
+    setSelected(new Set());
+    setConfirming(false);
+    setDeleting(false);
+    router.refresh();
+  }
 
   return (
     <div>
@@ -46,6 +82,38 @@ export default function EmployeeTable({ records }: { records: OnboardingRecord[]
           <option value="All">All Statuses</option>
           {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
+
+        {/* Bulk delete bar */}
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2">
+            {confirming ? (
+              <>
+                <span className="text-xs text-text-muted whitespace-nowrap">Delete {selected.size} record{selected.size !== 1 ? "s" : ""}?</span>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={deleting}
+                  className="px-3 py-2 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-medium hover:bg-red-500/30 transition-colors disabled:opacity-50 whitespace-nowrap"
+                >
+                  {deleting ? "Deleting..." : "Yes, delete"}
+                </button>
+                <button
+                  onClick={() => setConfirming(false)}
+                  className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-text-muted text-sm font-medium hover:bg-white/[0.08] transition-colors"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setConfirming(true)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium hover:bg-red-500/20 transition-colors whitespace-nowrap"
+              >
+                <Trash2 size={14} />
+                Delete {selected.size} selected
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -53,8 +121,16 @@ export default function EmployeeTable({ records }: { records: OnboardingRecord[]
         <table className="w-full">
           <thead>
             <tr className="border-b border-white/[0.06]">
+              <th className="px-4 py-3 pl-5 w-8">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="rounded border-white/20 bg-white/[0.04] accent-blue-500 cursor-pointer"
+                />
+              </th>
               {["Employee", "Role", "Start Date", "Manager", "Status", "Risk", "Missing Docs", "Next Action"].map((h) => (
-                <th key={h} className="text-left text-text-muted text-xs font-medium px-4 py-3 first:pl-5 last:pr-5">
+                <th key={h} className="text-left text-text-muted text-xs font-medium px-4 py-3 last:pr-5">
                   {h}
                 </th>
               ))}
@@ -63,8 +139,19 @@ export default function EmployeeTable({ records }: { records: OnboardingRecord[]
           </thead>
           <tbody>
             {filtered.map((r) => (
-              <tr key={r.id} className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02] transition-colors">
-                <td className="px-4 py-3.5 pl-5">
+              <tr
+                key={r.id}
+                className={`border-b border-white/[0.04] last:border-0 transition-colors ${selected.has(r.id) ? "bg-accent-blue/5" : "hover:bg-white/[0.02]"}`}
+              >
+                <td className="px-4 py-3.5 pl-5 w-8">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(r.id)}
+                    onChange={() => toggleOne(r.id)}
+                    className="rounded border-white/20 bg-white/[0.04] accent-blue-500 cursor-pointer"
+                  />
+                </td>
+                <td className="px-4 py-3.5">
                   <p className="text-text-primary text-sm font-medium">{r.employeeName}</p>
                   <p className="text-text-muted text-xs">{r.department}</p>
                 </td>
@@ -92,7 +179,7 @@ export default function EmployeeTable({ records }: { records: OnboardingRecord[]
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={9} className="text-center text-text-muted text-sm py-10">
+                <td colSpan={10} className="text-center text-text-muted text-sm py-10">
                   No employees match your search.
                 </td>
               </tr>
