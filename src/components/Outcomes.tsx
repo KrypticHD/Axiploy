@@ -1,5 +1,5 @@
 import AnimatedSection from "./AnimatedSection";
-import { Clock, Shield, UserPlus, FileBarChart, TrendingDown, Activity, Scale } from "lucide-react";
+import { Clock, Shield, UserPlus, FileBarChart, TrendingDown, Activity, Scale, Zap } from "lucide-react";
 
 const outcomes = [
   { icon: Clock, stat: "300+", label: "Admin hours saved monthly" },
@@ -9,6 +9,7 @@ const outcomes = [
   { icon: TrendingDown, stat: "↓ 60%", label: "Hiring pressure reduced" },
   { icon: Activity, stat: "24/7", label: "Always-on digital workforce" },
   { icon: Scale, stat: "Unlimited", label: "Scale without adding headcount" },
+  { icon: Zap, stat: "instant", label: "Zero onboarding lag, every time" },
 ];
 
 export default function Outcomes() {
