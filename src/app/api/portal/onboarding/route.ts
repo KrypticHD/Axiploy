@@ -58,5 +58,31 @@ export async function POST(req: NextRequest) {
     status: "success",
   });
 
+  // Fire n8n onboarding workflow
+  try {
+    await fetch("https://n8n-production-2d9a4.up.railway.app/webhook/axiploy-onboarding", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-webhook-secret": "xK9mP2vQ8nR5tL3wY7jH4cF6bD1sA0eG",
+      },
+      body: JSON.stringify({
+        clientId: session.clientId,
+        onboardingId: data.id,
+        name,
+        email,
+        phone,
+        role,
+        department,
+        manager,
+        startDate,
+        notes,
+        requiredDocs: requiredDocs || [],
+      }),
+    });
+  } catch {
+    // Don't fail the request if n8n is unreachable
+  }
+
   return NextResponse.json({ success: true, id: data.id });
 }
