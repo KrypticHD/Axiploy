@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         clientId: session.clientId,
         onboardingId: data.id,
+        token: data.token,
         name,
         email,
         phone,
