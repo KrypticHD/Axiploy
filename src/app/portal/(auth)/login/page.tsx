@@ -73,7 +73,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Link href="/">
-            <Image src="/logo.png" alt="Axiploy" width={160} height={44} className="h-11 w-auto object-contain" />
+            <Image src="/logo.png" alt="Axiploy" width={320} height={88} className="h-24 w-auto object-contain" />
           </Link>
         </div>
 
