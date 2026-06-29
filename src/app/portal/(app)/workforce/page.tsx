@@ -30,14 +30,13 @@ export default async function WorkforcePage() {
   let employees = emptyPreview ? [] : MOCK_DIGITAL_EMPLOYEES;
 
   if (clientId) {
-    const { data } = await supabaseAdmin()
-      .from("digital_employees")
-      .select("*")
-      .eq("client_id", clientId)
-      .order("created_at", { ascending: true });
+    const [{ data: deRows }, { data: onboardingRows }] = await Promise.all([
+      supabaseAdmin().from("digital_employees").select("*").eq("client_id", clientId).order("created_at", { ascending: true }),
+      supabaseAdmin().from("onboarding").select("id, status").eq("client_id", clientId),
+    ]);
 
-    if (data && data.length > 0) {
-      employees = data.map((de) => ({
+    if (deRows && deRows.length > 0) {
+      employees = deRows.map((de) => ({
         id: de.id,
         clientId: de.client_id,
         name: de.name,
@@ -49,6 +48,21 @@ export default async function WorkforcePage() {
           { label: "Success Rate", value: `${de.success_rate}%` },
         ],
       }));
+    } else if (onboardingRows && onboardingRows.length > 0) {
+      const total = onboardingRows.length;
+      const complete = onboardingRows.filter((r) => r.status === "Complete").length;
+      employees = [{
+        id: "onboarding-assistant",
+        clientId,
+        name: "AI Onboarding Assistant",
+        type: "onboarding" as const,
+        status: "Active" as const,
+        stats: [
+          { label: "Employees Managed", value: String(total) },
+          { label: "Hours Saved", value: `${total * 4}h` },
+          { label: "Completion Rate", value: total > 0 ? `${Math.round((complete / total) * 100)}%` : "—" },
+        ],
+      }];
     }
   }
 
