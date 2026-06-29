@@ -40,13 +40,13 @@ export default async function DashboardPage() {
     const supabase = supabaseAdmin();
     const [approvalsRes, onboardingRes, activityRes, deRes] = await Promise.all([
       supabase.from("approvals").select("id").eq("client_id", clientId).eq("status", "pending"),
-      supabase.from("onboarding").select("id").eq("client_id", clientId).eq("risk_level", "High"),
+      supabase.from("onboarding").select("id, status").eq("client_id", clientId),
       supabase.from("activity_log").select("*").eq("client_id", clientId).order("created_at", { ascending: false }).limit(5),
       supabase.from("digital_employees").select("*").eq("client_id", clientId),
     ]);
 
     pendingApprovals = approvalsRes.data?.length ?? 0;
-    highRiskItems = onboardingRes.data?.length ?? 0;
+    highRiskItems = (onboardingRes.data || []).filter((r) => r.status === "High").length;
 
     if (activityRes.data && activityRes.data.length > 0) {
       recentActivity = activityRes.data.map((a) => ({
@@ -68,6 +68,18 @@ export default async function DashboardPage() {
           { label: "Success Rate", value: `${de.success_rate}%` },
         ],
       }));
+    } else if (onboardingRes.data && onboardingRes.data.length > 0) {
+      const total = onboardingRes.data.length;
+      const complete = onboardingRes.data.filter((r) => r.status === "Complete").length;
+      digitalEmployees = [{
+        id: "onboarding-assistant", clientId, name: "AI Onboarding Assistant", type: "onboarding" as const,
+        status: "Active" as const,
+        stats: [
+          { label: "Employees Managed", value: String(total) },
+          { label: "Hours Saved", value: `${total * 4}h` },
+          { label: "Completion Rate", value: total > 0 ? `${Math.round((complete / total) * 100)}%` : "—" },
+        ],
+      }];
     } else if (!emptyPreview) {
       digitalEmployees = MOCK_DIGITAL_EMPLOYEES;
     }
