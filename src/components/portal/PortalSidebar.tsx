@@ -7,25 +7,30 @@ import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Bot, UserCheck, CheckSquare,
   BarChart2, Activity, FilePlus, Settings, X, MessageSquare,
-  Bell, BookOpen, Mail, GitBranch, LifeBuoy,
+  Bell, BookOpen, Mail, GitBranch, LifeBuoy, ChevronDown, ChevronRight, FolderOpen,
 } from "lucide-react";
 
-const baseNavItems = [
+const mainNavItems = [
   { href: "/portal/ask", label: "Ask Axiploy", icon: MessageSquare, highlight: true },
   { href: "/portal/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/portal/workforce", label: "AI Workforce", icon: Bot },
   { href: "/portal/workflows", label: "Workflow Health", icon: GitBranch },
-  { href: "/portal/onboarding", label: "Onboarding", icon: UserCheck },
-  { href: "/portal/approvals", label: "Approvals", icon: CheckSquare, badge: 0 },
   { href: "/portal/notifications", label: "Notifications", icon: Bell },
   { href: "/portal/reports", label: "Reports", icon: BarChart2 },
   { href: "/portal/activity", label: "Activity", icon: Activity },
   { href: "/portal/knowledge", label: "Knowledge Base", icon: BookOpen },
   { href: "/portal/templates", label: "Email Templates", icon: Mail },
-  { href: "/portal/forms/new-employee", label: "New Employee", icon: FilePlus },
   { href: "/portal/support", label: "Support", icon: LifeBuoy },
   { href: "/portal/settings", label: "Settings", icon: Settings },
 ];
+
+const onboardingNavItems = [
+  { href: "/portal/onboarding", label: "Onboarding", icon: UserCheck },
+  { href: "/portal/forms/new-employee", label: "New Employee", icon: FilePlus },
+  { href: "/portal/approvals", label: "Approvals", icon: CheckSquare, badge: true },
+];
+
+const ONBOARDING_PATHS = ["/portal/onboarding", "/portal/forms/new-employee", "/portal/approvals"];
 
 interface PortalSidebarProps {
   open: boolean;
@@ -36,6 +41,15 @@ interface PortalSidebarProps {
 export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSidebarProps) {
   const pathname = usePathname();
   const [pendingCount, setPendingCount] = useState(0);
+  const [hasOnboarding, setHasOnboarding] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+
+  useEffect(() => {
+    // Auto-expand group if on an onboarding path
+    if (ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+      setOnboardingOpen(true);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     fetch("/api/portal/approvals")
@@ -45,11 +59,57 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
         setPendingCount(pending);
       })
       .catch(() => {});
+
+    fetch("/api/portal/packages")
+      .then((r) => r.json())
+      .then((d) => setHasOnboarding(!!d.onboarding))
+      .catch(() => {});
   }, []);
 
-  const navItems = baseNavItems.map((item) =>
-    item.href === "/portal/approvals" ? { ...item, badge: pendingCount } : item
-  );
+  function renderNavItem(item: { href: string; label: string; icon: React.ElementType; highlight?: boolean; badge?: boolean }, indented = false) {
+    const active = pathname === item.href || pathname.startsWith(item.href + "/");
+    const isAsk = !!item.highlight;
+    const badgeCount = item.badge ? pendingCount : 0;
+
+    return (
+      <li key={item.href}>
+        <div className="flex items-center gap-1">
+          <Link
+            href={item.href}
+            onClick={onClose}
+            className={`flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${indented ? "pl-6" : ""} ${
+              active && isAsk
+                ? "bg-gradient-to-r from-accent-blue/20 to-accent-cyan/10 text-accent-blue border border-accent-blue/30"
+                : active
+                ? "bg-accent-blue/15 text-accent-blue border border-accent-blue/20"
+                : isAsk
+                ? "text-accent-blue/80 hover:text-accent-blue hover:bg-accent-blue/5 border border-accent-blue/10 hover:border-accent-blue/25"
+                : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
+            }`}
+          >
+            <item.icon size={16} className={active || isAsk ? "text-accent-blue" : "text-text-muted"} />
+            <span className="flex-1">{item.label}</span>
+            {badgeCount > 0 && (
+              <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                {badgeCount}
+              </span>
+            )}
+          </Link>
+          {isAsk && (
+            <button
+              onClick={() => { onClose(); onAskToggle(); }}
+              title="Quick chat"
+              className="p-2 rounded-lg text-accent-blue/60 hover:text-accent-blue hover:bg-accent-blue/10 transition-colors flex-shrink-0"
+            >
+              <MessageSquare size={14} />
+            </button>
+          )}
+        </div>
+      </li>
+    );
+  }
+
+  const groupActive = ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   const content = (
     <div className="flex flex-col h-full">
@@ -69,51 +129,40 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
           Portal
         </p>
         <ul className="space-y-0.5">
-          {navItems.map((item, idx) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + "/");
-            const isAsk = "highlight" in item && item.highlight;
-            return (
-              <div key={item.href}>
-                <li>
-                  <div className="flex items-center gap-1">
-                    <Link
-                      href={item.href}
-                      onClick={onClose}
-                      className={`flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                        active && isAsk
-                          ? "bg-gradient-to-r from-accent-blue/20 to-accent-cyan/10 text-accent-blue border border-accent-blue/30"
-                          : active
-                          ? "bg-accent-blue/15 text-accent-blue border border-accent-blue/20"
-                          : isAsk
-                          ? "text-accent-blue/80 hover:text-accent-blue hover:bg-accent-blue/5 border border-accent-blue/10 hover:border-accent-blue/25"
-                          : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
-                      }`}
-                    >
-                      <item.icon size={16} className={active || isAsk ? "text-accent-blue" : "text-text-muted"} />
-                      <span className="flex-1">{item.label}</span>
-                      {"badge" in item && item.badge ? (
-                        <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                          {item.badge}
-                        </span>
-                      ) : null}
-                    </Link>
-                    {isAsk && (
-                      <button
-                        onClick={() => { onClose(); onAskToggle(); }}
-                        title="Quick chat"
-                        className="p-2 rounded-lg text-accent-blue/60 hover:text-accent-blue hover:bg-accent-blue/10 transition-colors flex-shrink-0"
-                      >
-                        <MessageSquare size={14} />
-                      </button>
-                    )}
-                  </div>
-                </li>
-                {idx === 0 && (
-                  <div className="my-2 border-t border-white/[0.06]" />
+          {mainNavItems.map((item, idx) => (
+            <div key={item.href}>
+              {renderNavItem(item)}
+              {idx === 0 && <div className="my-2 border-t border-white/[0.06]" />}
+            </div>
+          ))}
+
+          {/* AI Onboarding group — only shown if client has onboarding package */}
+          {hasOnboarding && (
+            <li>
+              <button
+                onClick={() => setOnboardingOpen((v) => !v)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                  groupActive
+                    ? "text-accent-blue"
+                    : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
+                }`}
+              >
+                <FolderOpen size={16} className={groupActive ? "text-accent-blue" : "text-text-muted"} />
+                <span className="flex-1 text-left">AI Onboarding</span>
+                {pendingCount > 0 && !onboardingOpen && (
+                  <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                    {pendingCount}
+                  </span>
                 )}
-              </div>
-            );
-          })}
+                {onboardingOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+              {onboardingOpen && (
+                <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
+                  {onboardingNavItems.map((item) => renderNavItem(item, true))}
+                </ul>
+              )}
+            </li>
+          )}
         </ul>
       </nav>
 
