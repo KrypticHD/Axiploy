@@ -6,13 +6,14 @@ import {
   Plus, Trash2, UserCheck, ClipboardList, TrendingUp, Bot,
   Settings, ChevronDown, ChevronUp, X, PlusCircle, Check,
   Copy, Clock, Zap, AlertCircle, MinusCircle, CheckCircle2,
-  AlertTriangle,
+  AlertTriangle, Share2,
 } from "lucide-react";
 
 const AGENT_TEMPLATES = [
   { type: "onboarding", name: "AI Onboarding Assistant", description: "Automates employee onboarding — documents, forms, follow-ups.", icon: UserCheck },
   { type: "admin", name: "AI Admin Assistant", description: "Scheduling, reporting, data entry, communications.", icon: ClipboardList },
   { type: "growth", name: "AI Growth Assistant", description: "Lead follow-up, client engagement, pipeline management.", icon: TrendingUp },
+  { type: "social", name: "AI Social Media Manager", description: "Generate platform posts from photos, manage content calendar, monitor engagement.", icon: Share2 },
 ];
 
 const DEFAULT_DOCS = ["Employment Contract", "Tax File Number Declaration", "Right to Work", "Bank Details", "Emergency Contact Form"];
@@ -20,6 +21,7 @@ const DEFAULT_DOCS = ["Employment Contract", "Tax File Number Declaration", "Rig
 const AGENT_VERSION = "1.0.0";
 
 interface AgentConfig {
+  // Onboarding fields
   emailSenderName?: string;
   emailSenderAddress?: string;
   reminderFrequencyDays?: number;
@@ -27,6 +29,13 @@ interface AgentConfig {
   managerApproval?: boolean;
   knowledgeBase?: boolean;
   requiredDocuments?: string[];
+  // Social media fields
+  brandVoice?: string;
+  postFrequencyPerWeek?: number;
+  contentCategories?: string[];
+  platforms?: { facebook?: string; instagram?: string; linkedin?: string; twitter?: string };
+  postApprovalRequired?: boolean;
+  hashtags?: string[];
 }
 
 interface Agent {
@@ -330,6 +339,265 @@ function OnboardingConfigPanel({
   );
 }
 
+function socialSetupChecklist(config: AgentConfig | undefined): { label: string; ok: boolean }[] {
+  const hasAnyPlatform = !!(config?.platforms?.facebook || config?.platforms?.instagram || config?.platforms?.linkedin || config?.platforms?.twitter);
+  return [
+    { label: "Brand voice configured", ok: !!config?.brandVoice },
+    { label: "At least one platform handle added", ok: hasAnyPlatform },
+    { label: "Content categories defined", ok: !!(config?.contentCategories?.length) },
+    { label: "Posting frequency set", ok: config?.postFrequencyPerWeek !== undefined },
+  ];
+}
+
+const BRAND_VOICES = ["Professional", "Casual", "Friendly", "Bold", "Inspirational"];
+
+function SocialConfigPanel({
+  agent, clientId, lastRun, allClients, onSaved,
+}: {
+  agent: Agent;
+  clientId: string;
+  lastRun: LastRun | null;
+  allClients: { id: string; name: string }[];
+  onSaved: (id: string, config: AgentConfig) => void;
+}) {
+  const cfg = agent.config || {};
+  const [brandVoice, setBrandVoice] = useState(cfg.brandVoice || "Professional");
+  const [postFrequencyPerWeek, setPostFrequencyPerWeek] = useState(cfg.postFrequencyPerWeek ?? 3);
+  const [postApprovalRequired, setPostApprovalRequired] = useState(cfg.postApprovalRequired ?? true);
+  const [platforms, setPlatforms] = useState(cfg.platforms || { facebook: "", instagram: "", linkedin: "", twitter: "" });
+  const [contentCategories, setContentCategories] = useState<string[]>(cfg.contentCategories ?? ["Company updates", "Industry insights"]);
+  const [hashtags, setHashtags] = useState<string[]>(cfg.hashtags ?? []);
+  const [newCategory, setNewCategory] = useState("");
+  const [newHashtag, setNewHashtag] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [showClone, setShowClone] = useState(false);
+  const [cloning, setCloning] = useState(false);
+
+  const status = liveStatus(agent.status, lastRun);
+  const checklist = socialSetupChecklist({ brandVoice, postFrequencyPerWeek, platforms, contentCategories, postApprovalRequired });
+  const allGreen = checklist.every((c) => c.ok);
+
+  function addCategory() {
+    const t = newCategory.trim();
+    if (!t || contentCategories.includes(t)) return;
+    setContentCategories((prev) => [...prev, t]);
+    setNewCategory("");
+  }
+
+  function addHashtag() {
+    const t = newHashtag.trim().replace(/^#/, "");
+    if (!t || hashtags.includes(t)) return;
+    setHashtags((prev) => [...prev, t]);
+    setNewHashtag("");
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    const config: AgentConfig = { brandVoice, postFrequencyPerWeek, postApprovalRequired, platforms, contentCategories, hashtags };
+    const res = await fetch(`/api/admin/clients/${clientId}/agents`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentId: agent.id, config }),
+    });
+    setSaving(false);
+    if (res.ok) { onSaved(agent.id, config); setSaved(true); setTimeout(() => setSaved(false), 2000); }
+  }
+
+  async function handleClone(fromClientId: string) {
+    setCloning(true);
+    const res = await fetch(`/api/admin/clients/${fromClientId}/agents/clone?type=social`);
+    const data = await res.json();
+    if (data.config) {
+      const c: AgentConfig = data.config;
+      if (c.brandVoice) setBrandVoice(c.brandVoice);
+      if (c.postFrequencyPerWeek) setPostFrequencyPerWeek(c.postFrequencyPerWeek);
+      if (c.postApprovalRequired !== undefined) setPostApprovalRequired(c.postApprovalRequired);
+      if (c.platforms) setPlatforms(c.platforms);
+      if (c.contentCategories) setContentCategories(c.contentCategories);
+      if (c.hashtags) setHashtags(c.hashtags);
+    }
+    setCloning(false);
+    setShowClone(false);
+  }
+
+  return (
+    <div className="mt-3 space-y-5">
+      {/* AI Overview */}
+      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider">AI Overview</p>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${status.dot} ${status.label === "Running" ? "animate-pulse" : ""}`} />
+            <span className={`text-xs font-medium ${status.color}`}>{status.label}</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Posts Generated", value: agent.tasks_completed ?? 0 },
+            { label: "Hours Saved", value: agent.hours_saved ?? 0 },
+            { label: "Success Rate", value: `${agent.success_rate ?? 100}%` },
+          ].map((s) => (
+            <div key={s.label} className="text-center">
+              <p className="font-heading text-xl font-bold text-text-primary">{s.value}</p>
+              <p className="text-text-muted text-[10px] mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-white/[0.06]">
+          <Clock size={11} className="text-text-muted/50" />
+          <span className="text-text-muted/50 text-[10px]">Last run: {formatLastRun(lastRun)}</span>
+          <span className="text-text-muted/30 text-[10px] ml-auto">v{AGENT_VERSION}</span>
+        </div>
+      </div>
+
+      {/* Setup checklist */}
+      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider">Setup Checklist</p>
+          {allGreen
+            ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ready for production</span>
+            : <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Incomplete</span>
+          }
+        </div>
+        <div className="space-y-2">
+          {checklist.map((item) => (
+            <div key={item.label} className="flex items-center gap-2">
+              {item.ok ? <CheckCircle2 size={13} className="text-emerald-400 flex-shrink-0" /> : <AlertTriangle size={13} className="text-amber-400 flex-shrink-0" />}
+              <span className={`text-xs ${item.ok ? "text-text-muted" : "text-amber-400/80"}`}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Config form */}
+      <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-5">
+        {/* Clone banner */}
+        {allClients.length > 0 && (
+          <div>
+            <button onClick={() => setShowClone(!showClone)} className="flex items-center gap-2 text-xs text-accent-cyan hover:text-accent-blue transition-colors">
+              <Copy size={12} /> Copy configuration from another client
+              {showClone ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+            {showClone && (
+              <div className="mt-2 p-3 rounded-lg bg-white/[0.03] border border-white/[0.08] space-y-1.5">
+                {cloning && <p className="text-text-muted text-xs">Copying...</p>}
+                {!cloning && allClients.map((c) => (
+                  <button key={c.id} onClick={() => handleClone(c.id)}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-muted hover:text-text-primary hover:bg-white/[0.04] transition-colors">
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Brand & Schedule */}
+        <div>
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Brand & Schedule</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-text-muted text-xs mb-1 block">Brand Voice</label>
+              <select value={brandVoice} onChange={(e) => setBrandVoice(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40">
+                {BRAND_VOICES.map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-text-muted text-xs mb-1 block">Posts Per Week</label>
+              <input type="number" min={1} max={14} value={postFrequencyPerWeek} onChange={(e) => setPostFrequencyPerWeek(Number(e.target.value))}
+                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40" />
+              <p className="text-text-muted/50 text-[10px] mt-1">Target posts to generate per week</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Platform handles */}
+        <div>
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Platform Handles</p>
+          <div className="grid grid-cols-2 gap-3">
+            {(["facebook", "instagram", "linkedin", "twitter"] as const).map((p) => (
+              <div key={p}>
+                <label className="text-text-muted text-xs mb-1 block capitalize">{p === "twitter" ? "Twitter / X" : p}</label>
+                <input value={platforms[p] || ""} onChange={(e) => setPlatforms((prev) => ({ ...prev, [p]: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40"
+                  placeholder={`@handle`} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Toggles */}
+        <div>
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Options</p>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            <div>
+              <p className="text-text-primary text-sm">Require Post Approval</p>
+              <p className="text-text-muted text-xs mt-0.5">Client must approve each post before it goes to the publish queue</p>
+            </div>
+            <Toggle value={postApprovalRequired} onChange={setPostApprovalRequired} />
+          </div>
+        </div>
+
+        {/* Content categories */}
+        <div>
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Content Categories</p>
+          <div className="space-y-2 mb-3">
+            {contentCategories.map((cat) => (
+              <div key={cat} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                <span className="text-text-primary text-sm">{cat}</span>
+                <button onClick={() => setContentCategories((prev) => prev.filter((c) => c !== cat))} className="text-text-muted hover:text-red-400 transition-colors">
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input value={newCategory} onChange={(e) => setNewCategory(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addCategory()}
+              placeholder="Add content category..." className="flex-1 px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+            <button onClick={addCategory} disabled={!newCategory.trim()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm hover:bg-accent-blue/20 transition-colors disabled:opacity-40">
+              <PlusCircle size={14} /> Add
+            </button>
+          </div>
+        </div>
+
+        {/* Hashtag preferences */}
+        <div>
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Hashtag Preferences</p>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {hashtags.map((tag) => (
+              <span key={tag} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.10] text-text-muted text-xs">
+                #{tag}
+                <button onClick={() => setHashtags((prev) => prev.filter((h) => h !== tag))} className="hover:text-red-400 transition-colors">
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input value={newHashtag} onChange={(e) => setNewHashtag(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addHashtag()}
+              placeholder="Add hashtag (without #)..." className="flex-1 px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+            <button onClick={addHashtag} disabled={!newHashtag.trim()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm hover:bg-accent-blue/20 transition-colors disabled:opacity-40">
+              <PlusCircle size={14} /> Add
+            </button>
+          </div>
+        </div>
+
+        {/* Save */}
+        <div className="pt-1">
+          <button onClick={handleSave} disabled={saving}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
+            {saved ? <><Check size={14} /> Saved</> : saving ? "Saving..." : "Save Configuration"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AgentManager({
   clientId, agents: initialAgents, employeesManaged, lastRun, allClients,
 }: {
@@ -381,7 +649,7 @@ export default function AgentManager({
   }
 
   const typeIcons: Record<string, React.FC<{ size?: number; className?: string }>> = {
-    onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp,
+    onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp, social: Share2,
   };
 
   return (
@@ -462,7 +730,7 @@ export default function AgentManager({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {agent.type === "onboarding" && (
+                      {(agent.type === "onboarding" || agent.type === "social") && (
                         <button onClick={() => setConfiguringId(isConfiguring ? null : agent.id)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                             isConfiguring ? "bg-accent-blue/20 border-accent-blue/30 text-accent-blue" : "bg-white/[0.04] border-white/[0.10] text-text-muted hover:text-text-primary hover:bg-white/[0.08]"
@@ -486,6 +754,17 @@ export default function AgentManager({
                         clientId={clientId}
                         lastRun={lastRun}
                         employeesManaged={employeesManaged}
+                        allClients={allClients}
+                        onSaved={handleConfigSaved}
+                      />
+                    </div>
+                  )}
+                  {isConfiguring && agent.type === "social" && (
+                    <div className="px-4 pb-4">
+                      <SocialConfigPanel
+                        agent={agent}
+                        clientId={clientId}
+                        lastRun={lastRun}
                         allClients={allClients}
                         onSaved={handleConfigSaved}
                       />

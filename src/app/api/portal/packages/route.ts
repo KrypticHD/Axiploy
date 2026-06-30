@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!session.clientId) {
-    return NextResponse.json({ onboarding: false, admin: false, growth: false });
+    return NextResponse.json({ onboarding: false, admin: false, growth: false, social: false });
   }
 
   const { data } = await supabaseAdmin()
@@ -24,5 +24,6 @@ export async function GET(req: NextRequest) {
     onboarding: types.includes("onboarding"),
     admin: types.includes("admin"),
     growth: types.includes("growth"),
+    social: types.includes("social"),
   });
 }

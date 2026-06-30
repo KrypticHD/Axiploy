@@ -20,6 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     onboarding: "Onboarding",
     admin: "Admin",
     growth: "Growth",
+    social: "Social Media",
   };
 
   const { error } = await supabaseAdmin().from("digital_employees").insert({

@@ -124,7 +124,7 @@ export interface Report {
 export interface DigitalEmployee {
   id: string;
   clientId: string;
-  type: "onboarding" | "admin" | "growth";
+  type: "onboarding" | "admin" | "growth" | "social";
   name: string;
   status: "Active" | "Paused" | "Setup";
   stats: { label: string; value: string | number }[];

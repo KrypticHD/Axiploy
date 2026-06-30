@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Bot, UserCheck, CheckSquare,
   BarChart2, Activity, FilePlus, Settings, X, MessageSquare,
   Bell, BookOpen, Mail, GitBranch, LifeBuoy, ChevronDown, ChevronRight, FolderOpen,
+  Sparkles, Calendar, Share2,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -32,6 +33,14 @@ const onboardingNavItems = [
 
 const ONBOARDING_PATHS = ["/portal/onboarding", "/portal/forms/new-employee", "/portal/approvals"];
 
+const socialNavItems = [
+  { href: "/portal/social", label: "Post Studio", icon: Sparkles },
+  { href: "/portal/social/posts", label: "Scheduled Posts", icon: Calendar },
+  { href: "/portal/social/analytics", label: "Analytics", icon: BarChart2 },
+];
+
+const SOCIAL_PATHS = ["/portal/social"];
+
 interface PortalSidebarProps {
   open: boolean;
   onClose: () => void;
@@ -43,11 +52,15 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   const [pendingCount, setPendingCount] = useState(0);
   const [hasOnboarding, setHasOnboarding] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [hasSocial, setHasSocial] = useState(false);
+  const [socialOpen, setSocialOpen] = useState(false);
 
   useEffect(() => {
-    // Auto-expand group if on an onboarding path
     if (ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
       setOnboardingOpen(true);
+    }
+    if (SOCIAL_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+      setSocialOpen(true);
     }
   }, [pathname]);
 
@@ -62,7 +75,10 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
 
     fetch("/api/portal/packages")
       .then((r) => r.json())
-      .then((d) => setHasOnboarding(!!d.onboarding))
+      .then((d) => {
+        setHasOnboarding(!!d.onboarding);
+        setHasSocial(!!d.social);
+      })
       .catch(() => {});
   }, []);
 
@@ -110,6 +126,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   }
 
   const groupActive = ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const socialGroupActive = SOCIAL_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   const content = (
     <div className="flex flex-col h-full">
@@ -159,6 +176,29 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
               {onboardingOpen && (
                 <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
                   {onboardingNavItems.map((item) => renderNavItem(item, true))}
+                </ul>
+              )}
+            </li>
+          )}
+
+          {/* AI Social group — only shown if client has social media package */}
+          {hasSocial && (
+            <li>
+              <button
+                onClick={() => setSocialOpen((v) => !v)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                  socialGroupActive
+                    ? "text-accent-blue"
+                    : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
+                }`}
+              >
+                <Share2 size={16} className={socialGroupActive ? "text-accent-blue" : "text-text-muted"} />
+                <span className="flex-1 text-left">AI Social</span>
+                {socialOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+              {socialOpen && (
+                <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
+                  {socialNavItems.map((item) => renderNavItem(item, true))}
                 </ul>
               )}
             </li>
