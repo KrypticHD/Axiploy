@@ -3,22 +3,20 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Bot, UserCheck, CheckSquare,
   BarChart2, Activity, FilePlus, Settings, X, MessageSquare,
   Bell, BookOpen, Mail, GitBranch, LifeBuoy,
 } from "lucide-react";
-import { MOCK_APPROVALS } from "@/lib/mock-data";
 
-const pendingApprovals = MOCK_APPROVALS.filter((a) => a.status === "pending").length;
-
-const navItems = [
+const baseNavItems = [
   { href: "/portal/ask", label: "Ask Axiploy", icon: MessageSquare, highlight: true },
   { href: "/portal/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/portal/workforce", label: "AI Workforce", icon: Bot },
   { href: "/portal/workflows", label: "Workflow Health", icon: GitBranch },
   { href: "/portal/onboarding", label: "Onboarding", icon: UserCheck },
-  { href: "/portal/approvals", label: "Approvals", icon: CheckSquare, badge: pendingApprovals },
+  { href: "/portal/approvals", label: "Approvals", icon: CheckSquare, badge: 0 },
   { href: "/portal/notifications", label: "Notifications", icon: Bell },
   { href: "/portal/reports", label: "Reports", icon: BarChart2 },
   { href: "/portal/activity", label: "Activity", icon: Activity },
@@ -37,6 +35,21 @@ interface PortalSidebarProps {
 
 export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSidebarProps) {
   const pathname = usePathname();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    fetch("/api/portal/approvals")
+      .then((r) => r.json())
+      .then((d) => {
+        const pending = (d.approvals || []).filter((a: { status: string }) => a.status === "pending").length;
+        setPendingCount(pending);
+      })
+      .catch(() => {});
+  }, []);
+
+  const navItems = baseNavItems.map((item) =>
+    item.href === "/portal/approvals" ? { ...item, badge: pendingCount } : item
+  );
 
   const content = (
     <div className="flex flex-col h-full">

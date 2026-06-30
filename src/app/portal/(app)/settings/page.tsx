@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { MOCK_USER } from "@/lib/mock-data";
-import { Building2, Users, Bell, Shield, BarChart2, Monitor, CheckCircle2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, Users, Bell, Shield, BarChart2, Monitor, CheckCircle2, AlertCircle } from "lucide-react";
 
 const inputClass =
   "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-accent-blue/50 transition-all duration-200";
@@ -38,20 +37,55 @@ export default function SettingsPage() {
   const [notifs, setNotifs] = useState<Record<string, boolean>>(
     Object.fromEntries(NOTIF_DEFAULTS.map((n) => [n.key, n.on]))
   );
+  const [profileForm, setProfileForm] = useState({ name: "", email: "" });
   const [saved, setSaved] = useState(false);
-  const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
+  const [saveError, setSaveError] = useState("");
+  const [pwForm, setPwForm] = useState({ next: "", confirm: "" });
   const [pwSaved, setPwSaved] = useState(false);
+  const [pwError, setPwError] = useState("");
 
-  function handleSave() {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+  useEffect(() => {
+    fetch("/api/portal/me")
+      .then((r) => r.json())
+      .then((d) => setProfileForm({ name: d.name || "", email: d.email || "" }));
+  }, []);
+
+  async function handleSave() {
+    setSaveError("");
+    const res = await fetch("/api/portal/settings/profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(profileForm),
+    });
+    if (res.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } else {
+      const d = await res.json();
+      setSaveError(d.error || "Failed to save");
+    }
   }
 
-  function handlePwSave(e: React.FormEvent) {
+  async function handlePwSave(e: React.FormEvent) {
     e.preventDefault();
-    setPwSaved(true);
-    setPwForm({ current: "", next: "", confirm: "" });
-    setTimeout(() => setPwSaved(false), 3000);
+    setPwError("");
+    if (pwForm.next !== pwForm.confirm) {
+      setPwError("Passwords do not match");
+      return;
+    }
+    const res = await fetch("/api/portal/settings/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newPassword: pwForm.next }),
+    });
+    if (res.ok) {
+      setPwSaved(true);
+      setPwForm({ next: "", confirm: "" });
+      setTimeout(() => setPwSaved(false), 3000);
+    } else {
+      const d = await res.json();
+      setPwError(d.error || "Failed to update password");
+    }
   }
 
   const tabs: { key: Tab; label: string; icon: React.FC<{ size?: number; className?: string }> }[] = [
@@ -90,26 +124,17 @@ export default function SettingsPage() {
         <div className="glass rounded-2xl p-6 space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-text-muted text-xs mb-1.5 block">Business Name</label>
-              <input type="text" defaultValue={MOCK_USER.clientName} className={inputClass} />
+              <label className="text-text-muted text-xs mb-1.5 block">Full Name</label>
+              <input type="text" value={profileForm.name} onChange={(e) => setProfileForm((f) => ({ ...f, name: e.target.value }))} className={inputClass} />
             </div>
             <div>
               <label className="text-text-muted text-xs mb-1.5 block">Contact Email</label>
-              <input type="email" defaultValue={MOCK_USER.email} className={inputClass} />
-            </div>
-            <div>
-              <label className="text-text-muted text-xs mb-1.5 block">Industry</label>
-              <input type="text" defaultValue="Construction" className={inputClass} />
-            </div>
-            <div>
-              <label className="text-text-muted text-xs mb-1.5 block">Phone</label>
-              <input type="text" defaultValue="+44 7700 900000" className={inputClass} />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="text-text-muted text-xs mb-1.5 block">Business Address</label>
-              <input type="text" defaultValue="14 Canary Wharf, London, E14 5AB" className={inputClass} />
+              <input type="email" value={profileForm.email} onChange={(e) => setProfileForm((f) => ({ ...f, email: e.target.value }))} className={inputClass} />
             </div>
           </div>
+          {saveError && (
+            <p className="flex items-center gap-1.5 text-red-400 text-xs"><AlertCircle size={12} />{saveError}</p>
+          )}
           <button onClick={handleSave} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium transition-colors">
             {saved ? <><CheckCircle2 size={14} /> Saved</> : "Save Changes"}
           </button>
@@ -121,7 +146,7 @@ export default function SettingsPage() {
         <div className="glass rounded-2xl p-6 space-y-4">
           <div className="space-y-3">
             {[
-              { name: MOCK_USER.name, email: MOCK_USER.email, role: "Client Admin", active: true },
+              { name: profileForm.name || "You", email: profileForm.email, role: "Client Admin", active: true },
               { name: "Coming Soon", email: "invite a team member", role: "Client Manager", active: false },
             ].map((u) => (
               <div key={u.email} className={`flex items-center justify-between p-4 rounded-xl border ${u.active ? "bg-white/[0.03] border-white/[0.05]" : "border-dashed border-white/[0.06] opacity-40"}`}>
@@ -220,10 +245,6 @@ export default function SettingsPage() {
             ) : (
               <form onSubmit={handlePwSave} className="space-y-3">
                 <div>
-                  <label className="text-text-muted text-xs mb-1.5 block">Current Password</label>
-                  <input type="password" required value={pwForm.current} onChange={(e) => setPwForm((f) => ({ ...f, current: e.target.value }))} placeholder="••••••••" className={inputClass} />
-                </div>
-                <div>
                   <label className="text-text-muted text-xs mb-1.5 block">New Password</label>
                   <input type="password" required value={pwForm.next} onChange={(e) => setPwForm((f) => ({ ...f, next: e.target.value }))} placeholder="••••••••" className={inputClass} />
                 </div>
@@ -231,6 +252,9 @@ export default function SettingsPage() {
                   <label className="text-text-muted text-xs mb-1.5 block">Confirm New Password</label>
                   <input type="password" required value={pwForm.confirm} onChange={(e) => setPwForm((f) => ({ ...f, confirm: e.target.value }))} placeholder="••••••••" className={inputClass} />
                 </div>
+                {pwError && (
+                  <p className="flex items-center gap-1.5 text-red-400 text-xs"><AlertCircle size={12} />{pwError}</p>
+                )}
                 <button type="submit" className="px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium transition-colors">
                   Update Password
                 </button>

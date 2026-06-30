@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { LifeBuoy, CheckCircle2 } from "lucide-react";
+import { LifeBuoy, CheckCircle2, AlertCircle } from "lucide-react";
 
 const REQUEST_TYPES = [
   "Workflow Modification",
@@ -18,11 +18,29 @@ const PRIORITIES = ["Low", "Medium", "High", "Urgent"] as const;
 
 export default function SupportPage() {
   const [submitted, setSubmitted] = useState(false);
+  const [refId, setRefId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({ type: "", priority: "Medium" as typeof PRIORITIES[number], subject: "", description: "" });
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
+    setLoading(true);
+    setError("");
+    const res = await fetch("/api/portal/support", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    setLoading(false);
+    if (res.ok) {
+      const d = await res.json();
+      setRefId(d.refId || "");
+      setSubmitted(true);
+    } else {
+      const d = await res.json();
+      setError(d.error || "Failed to submit request. Please try again.");
+    }
   }
 
   const inputClass = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-text-primary placeholder-text-muted/40 text-sm focus:outline-none focus:border-accent-blue/50 focus:ring-1 focus:ring-accent-blue/25 transition-all";
@@ -37,9 +55,9 @@ export default function SupportPage() {
         <p className="text-text-muted text-sm">
           Your support request has been received by the Axiploy team. We typically respond within one business day.
         </p>
-        <p className="text-xs text-text-muted/50">Reference: AXI-{Math.random().toString(36).slice(2, 8).toUpperCase()}</p>
+        <p className="text-xs text-text-muted/50">Reference: {refId}</p>
         <button
-          onClick={() => { setSubmitted(false); setForm({ type: "", priority: "Medium", subject: "", description: "" }); }}
+          onClick={() => { setSubmitted(false); setRefId(""); setForm({ type: "", priority: "Medium", subject: "", description: "" }); }}
           className="mt-4 px-6 py-2.5 rounded-full glass border border-white/[0.10] hover:border-accent-blue/30 text-text-muted hover:text-text-primary text-sm transition-colors"
         >
           Submit Another Request
@@ -130,11 +148,15 @@ export default function SupportPage() {
             />
           </div>
 
+          {error && (
+            <p className="flex items-center gap-1.5 text-red-400 text-xs"><AlertCircle size={12} />{error}</p>
+          )}
           <button
             type="submit"
-            className="w-full py-3 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-semibold transition-colors"
+            disabled={loading}
+            className="w-full py-3 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-semibold transition-colors disabled:opacity-60"
           >
-            Submit Request
+            {loading ? "Submitting…" : "Submit Request"}
           </button>
         </form>
       </div>

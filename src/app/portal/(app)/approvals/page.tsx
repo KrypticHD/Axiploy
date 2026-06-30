@@ -2,16 +2,8 @@
 
 import { useState, useEffect } from "react";
 import ApprovalCard from "@/components/portal/ApprovalCard";
-import { MOCK_APPROVALS, MOCK_USER } from "@/lib/mock-data";
+import { MOCK_APPROVALS } from "@/lib/mock-data";
 import { CheckSquare, History, Clock } from "lucide-react";
-
-const MOCK_HISTORY = [
-  { id: "h-001", actionType: "Send Reminder Email", digitalEmployee: "AI Onboarding Assistant", relatedPerson: "Tom Reynolds", approvedBy: MOCK_USER.name, decision: "approved" as const, decidedAt: "2024-11-18T09:14:00Z" },
-  { id: "h-002", actionType: "Escalate to Manager", digitalEmployee: "AI Onboarding Assistant", relatedPerson: "Claire Booth", approvedBy: MOCK_USER.name, decision: "approved" as const, decidedAt: "2024-11-17T14:32:00Z" },
-  { id: "h-003", actionType: "Generate Onboarding Pack", digitalEmployee: "AI Admin Assistant", relatedPerson: "Mark Stevens", approvedBy: MOCK_USER.name, decision: "rejected" as const, decidedAt: "2024-11-16T11:05:00Z" },
-  { id: "h-004", actionType: "Lead Follow-Up Email", digitalEmployee: "AI Growth Assistant", relatedPerson: "Sunrise Logistics", approvedBy: MOCK_USER.name, decision: "approved" as const, decidedAt: "2024-11-15T16:20:00Z" },
-  { id: "h-005", actionType: "Send Compliance Checklist", digitalEmployee: "AI Admin Assistant", relatedPerson: "Sarah Mitchell", approvedBy: MOCK_USER.name, decision: "approved" as const, decidedAt: "2024-11-14T10:45:00Z" },
-];
 
 function fmt(ts: string) {
   return new Date(ts).toLocaleString("en-AU", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -128,7 +120,10 @@ export default function ApprovalsPage() {
             <p className="text-xs text-text-muted mt-0.5">A record of all actions reviewed and decisions made</p>
           </div>
           <div className="divide-y divide-white/[0.04]">
-            {[...history.map((a) => ({
+            {history.length === 0 && (
+              <div className="px-5 py-10 text-center text-text-muted text-sm">No history yet</div>
+            )}
+            {history.map((a) => ({
               id: a.id,
               actionType: a.actionType,
               digitalEmployee: a.digitalEmployee,
@@ -136,7 +131,7 @@ export default function ApprovalsPage() {
               approvedBy: "You",
               decision: a.status as "approved" | "rejected",
               decidedAt: a.createdAt,
-            })), ...MOCK_HISTORY].map((h) => (
+            })).map((h) => (
               <div key={h.id} className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors">
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${h.decision === "approved" ? "bg-emerald-400" : "bg-red-400"}`} />
