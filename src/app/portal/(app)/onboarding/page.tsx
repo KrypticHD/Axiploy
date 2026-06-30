@@ -3,9 +3,8 @@ import EmployeeTable from "@/components/portal/EmployeeTable";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { UserCheck, Clock, FileX, AlertTriangle, CalendarDays, Timer, FilePlus } from "lucide-react";
-import { MOCK_ONBOARDING } from "@/lib/mock-data";
 import { supabaseAdmin } from "@/lib/supabase";
-import { isEmptyPreview } from "@/lib/preview";
+import type { OnboardingRecord } from "@/lib/types";
 
 async function getClientId() {
   const cookieStore = await cookies();
@@ -15,9 +14,9 @@ async function getClientId() {
 }
 
 export default async function OnboardingPage() {
-  const [clientId, emptyPreview] = await Promise.all([getClientId(), isEmptyPreview()]);
+  const clientId = await getClientId();
 
-  let records = emptyPreview ? [] : MOCK_ONBOARDING;
+  let records: OnboardingRecord[] = [];
 
   if (clientId) {
     const { data } = await supabaseAdmin()

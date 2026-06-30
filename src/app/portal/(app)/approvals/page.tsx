@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import ApprovalCard from "@/components/portal/ApprovalCard";
-import { MOCK_APPROVALS } from "@/lib/mock-data";
 import { CheckSquare, History, Clock } from "lucide-react";
 
 function fmt(ts: string) {
@@ -11,7 +10,7 @@ function fmt(ts: string) {
 
 export default function ApprovalsPage() {
   const [tab, setTab] = useState<"pending" | "history">("pending");
-  const [approvals, setApprovals] = useState(MOCK_APPROVALS);
+  const [approvals, setApprovals] = useState<Array<{ id: string; clientId: string; digitalEmployee: string; actionType: string; relatedPerson: string; relatedBusiness: string; draftContent: string; reason: string; status: "pending" | "approved" | "rejected"; createdAt: string }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

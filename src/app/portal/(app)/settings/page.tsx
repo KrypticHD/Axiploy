@@ -17,20 +17,6 @@ const NOTIF_DEFAULTS = [
   { key: "digest", label: "Daily digest", desc: "Morning summary of yesterday's AI activity", on: false },
 ];
 
-const SESSIONS = [
-  { device: "Chrome · Windows 11", location: "London, UK", time: "Active now", current: true },
-  { device: "Safari · iPhone 15", location: "London, UK", time: "2 hours ago", current: false },
-];
-
-const PLAN = {
-  name: "Axiploy Pro",
-  limits: [
-    { label: "Digital Employees", used: 3, max: 5 },
-    { label: "Users", used: 1, max: 10 },
-    { label: "Onboarding records", used: 5, max: 100 },
-    { label: "Tasks this month", used: 428, max: 2000 },
-  ],
-};
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("profile");
@@ -43,6 +29,7 @@ export default function SettingsPage() {
   const [pwForm, setPwForm] = useState({ next: "", confirm: "" });
   const [pwSaved, setPwSaved] = useState(false);
   const [pwError, setPwError] = useState("");
+  const [planMetrics, setPlanMetrics] = useState<{ hoursSaved: number; tasksCompleted: number; activeOnboardings: number; actionsThisMonth: number } | null>(null);
 
   useEffect(() => {
     fetch("/api/portal/me")
@@ -55,6 +42,10 @@ export default function SettingsPage() {
           setNotifs((prev) => ({ ...prev, ...d.preferences }));
         }
       })
+      .catch(() => {});
+    fetch("/api/portal/reports/metrics")
+      .then((r) => r.json())
+      .then((d) => setPlanMetrics(d))
       .catch(() => {});
   }, []);
 
@@ -162,29 +153,29 @@ export default function SettingsPage() {
       {/* Users */}
       {tab === "users" && (
         <div className="glass rounded-2xl p-6 space-y-4">
-          <div className="space-y-3">
-            {[
-              { name: profileForm.name || "You", email: profileForm.email, role: "Client Admin", active: true },
-              { name: "Coming Soon", email: "invite a team member", role: "Client Manager", active: false },
-            ].map((u) => (
-              <div key={u.email} className={`flex items-center justify-between p-4 rounded-xl border ${u.active ? "bg-white/[0.03] border-white/[0.05]" : "border-dashed border-white/[0.06] opacity-40"}`}>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-blue to-accent-cyan flex items-center justify-center text-white text-xs font-bold">
-                    {u.name.split(" ").map((n) => n[0]).join("")}
-                  </div>
-                  <div>
-                    <p className="text-text-primary text-sm font-medium">{u.name}</p>
-                    <p className="text-text-muted text-xs">{u.email}</p>
-                  </div>
-                </div>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/20">{u.role}</span>
+          <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-blue to-accent-cyan flex items-center justify-center text-white text-xs font-bold">
+                {(profileForm.name || "U").split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
               </div>
-            ))}
+              <div>
+                <p className="text-text-primary text-sm font-medium">{profileForm.name || "You"}</p>
+                <p className="text-text-muted text-xs">{profileForm.email}</p>
+              </div>
+            </div>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/20">Client Admin</span>
           </div>
-          <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-white/20 text-text-muted text-sm font-medium transition-colors">
-            + Invite User
-          </button>
-          <p className="text-xs text-text-muted/50">Role permissions: Client Admin = full access · Manager = no settings · Viewer = read only</p>
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-start gap-3">
+            <Users size={15} className="text-accent-blue mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-text-primary text-sm font-medium">Need to add team members?</p>
+              <p className="text-text-muted text-xs mt-0.5 mb-3">User management is handled by the Axiploy team. Contact us to add, remove, or adjust permissions for your team.</p>
+              <a href="/portal/support" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20 hover:bg-accent-blue/20 text-accent-blue text-xs font-medium transition-colors">
+                Contact Axiploy to manage users
+              </a>
+            </div>
+          </div>
+          <p className="text-xs text-text-muted/50">Roles: Client Admin = full access · Manager = no settings · Viewer = read only</p>
         </div>
       )}
 
@@ -217,33 +208,31 @@ export default function SettingsPage() {
         <div className="glass rounded-2xl p-6 space-y-5">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-text-primary font-semibold">{PLAN.name}</p>
-              <p className="text-text-muted text-xs mt-0.5">Renews monthly · managed by Axiploy</p>
+              <p className="text-text-primary font-semibold">Axiploy Plan</p>
+              <p className="text-text-muted text-xs mt-0.5">Managed by Axiploy · contact us to adjust</p>
             </div>
             <span className="text-xs px-3 py-1.5 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/20 font-medium">Active</span>
           </div>
-          <div className="space-y-4">
-            {PLAN.limits.map((l) => {
-              const pct = Math.min(100, Math.round((l.used / l.max) * 100));
-              return (
-                <div key={l.label}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <p className="text-text-muted text-xs">{l.label}</p>
-                    <p className="text-text-primary text-xs font-medium">{l.used.toLocaleString()} / {l.max.toLocaleString()}</p>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${pct > 80 ? "bg-amber-500" : "bg-accent-blue"}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+          {planMetrics ? (
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: "Hours Saved This Month", value: `${planMetrics.hoursSaved}h` },
+                { label: "Tasks Completed", value: planMetrics.tasksCompleted.toLocaleString() },
+                { label: "Active Onboardings", value: planMetrics.activeOnboardings.toLocaleString() },
+                { label: "AI Actions This Month", value: planMetrics.actionsThisMonth.toLocaleString() },
+              ].map((m) => (
+                <div key={m.label} className="bg-white/[0.03] rounded-xl p-4 text-center">
+                  <p className="font-heading font-bold text-text-primary text-xl">{m.value}</p>
+                  <p className="text-text-muted text-[10px] mt-0.5">{m.label}</p>
                 </div>
-              );
-            })}
-          </div>
-          <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-accent-blue/30 hover:text-accent-blue text-text-muted text-sm font-medium transition-colors">
-            Upgrade Plan
-          </button>
+              ))}
+            </div>
+          ) : (
+            <div className="py-6 text-center text-text-muted text-sm">Loading usage data…</div>
+          )}
+          <a href="/portal/support" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-accent-blue/30 hover:text-accent-blue text-text-muted text-sm font-medium transition-colors">
+            Contact Axiploy to discuss your plan
+          </a>
         </div>
       )}
 
@@ -281,26 +270,13 @@ export default function SettingsPage() {
           </div>
 
           {/* Active sessions */}
-          <div className="glass rounded-2xl p-6 space-y-4">
-            <div className="flex items-center gap-3 mb-2">
+          <div className="glass rounded-2xl p-6 space-y-3">
+            <div className="flex items-center gap-3">
               <Monitor size={16} className="text-accent-blue" />
               <h2 className="font-heading font-semibold text-text-primary text-sm">Active Sessions</h2>
+              <span className="text-xs px-2.5 py-1 rounded-full glass border border-white/[0.10] text-text-muted ml-auto">Coming Soon</span>
             </div>
-            <div className="space-y-3">
-              {SESSIONS.map((s) => (
-                <div key={s.device} className="flex items-center justify-between p-3 bg-white/[0.03] rounded-xl border border-white/[0.05]">
-                  <div>
-                    <p className="text-text-primary text-sm">{s.device}</p>
-                    <p className="text-text-muted text-xs mt-0.5">{s.location} · {s.time}</p>
-                  </div>
-                  {s.current ? (
-                    <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Current</span>
-                  ) : (
-                    <button className="text-[10px] px-2 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors">Revoke</button>
-                  )}
-                </div>
-              ))}
-            </div>
+            <p className="text-text-muted text-xs">Session management will allow you to view and revoke active logins across devices.</p>
           </div>
 
           {/* MFA */}

@@ -2,9 +2,8 @@ import StatusPill from "@/components/portal/StatusPill";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { UserCheck, ClipboardList, TrendingUp, ArrowRight, Settings, Bot } from "lucide-react";
-import { MOCK_DIGITAL_EMPLOYEES } from "@/lib/mock-data";
 import { supabaseAdmin } from "@/lib/supabase";
-import { isEmptyPreview } from "@/lib/preview";
+import type { DigitalEmployee } from "@/lib/types";
 
 const deIcons: Record<string, React.FC<{ size?: number; className?: string }>> = {
   onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp,
@@ -26,8 +25,8 @@ async function getClientId() {
 }
 
 export default async function WorkforcePage() {
-  const [clientId, emptyPreview] = await Promise.all([getClientId(), isEmptyPreview()]);
-  let employees = emptyPreview ? [] : MOCK_DIGITAL_EMPLOYEES;
+  const clientId = await getClientId();
+  let employees: DigitalEmployee[] = [];
 
   if (clientId) {
     const [{ data: deRows }, { data: onboardingRows }] = await Promise.all([
@@ -117,9 +116,9 @@ export default async function WorkforcePage() {
                   <Link href="/portal/reports" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-white/20 text-text-primary text-sm font-medium transition-colors">
                     View Reports
                   </Link>
-                  <button className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-white/20 text-text-muted text-sm font-medium transition-colors">
+                  <Link href="/portal/support" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-white/20 text-text-muted text-sm font-medium transition-colors">
                     <Settings size={14} /> Configure
-                  </button>
+                  </Link>
                 </div>
               </div>
             );
