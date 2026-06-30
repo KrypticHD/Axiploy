@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const storagePath = decodeURIComponent(pathParts[1]);
   const { data: signedUrl, error } = await supabase.storage
     .from("knowledge-base")
-    .createSignedUrl(storagePath, 60);
+    .createSignedUrl(storagePath, 60, { download: `${doc.name}.${doc.file_type.toLowerCase()}` });
 
   if (error || !signedUrl) return NextResponse.json({ error: "Could not generate download link" }, { status: 500 });
 

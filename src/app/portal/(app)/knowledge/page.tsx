@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookOpen, Upload, Download, Trash2, Search, FileText, File, Image, Table } from "lucide-react";
+import { BookOpen, Upload, Download, Trash2, Search, FileText, File, Image, Table, Pencil, Check, X } from "lucide-react";
 
 interface KnowledgeDoc {
   id: string;
@@ -23,6 +23,129 @@ function fmt(kb: number): string {
   return `${(kb / 1024).toFixed(1)} MB`;
 }
 
+function DocRow({ doc, onDelete, onUpdate }: {
+  doc: KnowledgeDoc;
+  onDelete: (id: string) => void;
+  onUpdate: (id: string, name: string, category: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(doc.name);
+  const [category, setCategory] = useState(doc.category);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    const res = await fetch("/api/portal/knowledge", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: doc.id, name, category }),
+    });
+    if (res.ok) {
+      onUpdate(doc.id, name, category);
+      setEditing(false);
+    }
+    setSaving(false);
+  }
+
+  function handleCancel() {
+    setName(doc.name);
+    setCategory(doc.category);
+    setEditing(false);
+  }
+
+  const Icon = FILE_ICONS[doc.file_type] || File;
+
+  return (
+    <div className="glass rounded-xl border border-white/[0.06] p-4 hover:border-white/[0.12] transition-colors">
+      <div className="flex items-center gap-4">
+        <div className="w-9 h-9 rounded-xl bg-accent-blue/10 flex items-center justify-center flex-shrink-0">
+          <Icon size={16} className="text-accent-blue" />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          {editing ? (
+            <div className="space-y-2">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-1.5 text-sm bg-white/[0.06] border border-accent-blue/30 rounded-lg text-text-primary focus:outline-none"
+                autoFocus
+              />
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="px-3 py-1.5 text-xs bg-white/[0.06] border border-white/[0.12] rounded-lg text-text-muted [color-scheme:dark]"
+              >
+                {CATEGORIES.filter((c) => c !== "All").map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <>
+              <p className="text-text-primary text-sm font-medium truncate">{doc.name}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-text-muted">{doc.category}</span>
+                <span className="text-[10px] text-text-muted/50">{doc.file_type}</span>
+                {doc.file_size_kb > 0 && <span className="text-[10px] text-text-muted/50">{fmt(doc.file_size_kb)}</span>}
+                <span className="text-[10px] text-text-muted/40">
+                  {new Date(doc.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {editing ? (
+            <>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="p-2 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+                title="Save"
+              >
+                <Check size={14} />
+              </button>
+              <button
+                onClick={handleCancel}
+                className="p-2 rounded-lg text-text-muted hover:bg-white/[0.06] transition-colors"
+                title="Cancel"
+              >
+                <X size={14} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setEditing(true)}
+                className="p-2 rounded-lg text-text-muted hover:text-accent-cyan hover:bg-accent-cyan/10 transition-colors"
+                title="Rename / change category"
+              >
+                <Pencil size={14} />
+              </button>
+              <a
+                href={`/api/portal/knowledge/download/${doc.id}`}
+                className="p-2 rounded-lg text-text-muted hover:text-accent-blue hover:bg-accent-blue/10 transition-colors"
+                title="Download"
+              >
+                <Download size={14} />
+              </a>
+              <button
+                onClick={() => onDelete(doc.id)}
+                className="p-2 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                title="Delete"
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function KnowledgePage() {
   const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +154,7 @@ export default function KnowledgePage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [uploadCategory, setUploadCategory] = useState("Policies");
+
   useEffect(() => {
     fetch("/api/portal/knowledge")
       .then((r) => r.json())
@@ -63,8 +187,16 @@ export default function KnowledgePage() {
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this document?")) return;
-    const res = await fetch("/api/portal/knowledge", { method: "DELETE", body: JSON.stringify({ id }), headers: { "Content-Type": "application/json" } });
+    const res = await fetch("/api/portal/knowledge", {
+      method: "DELETE",
+      body: JSON.stringify({ id }),
+      headers: { "Content-Type": "application/json" },
+    });
     if (res.ok) setDocs((prev) => prev.filter((d) => d.id !== id));
+  }
+
+  function handleUpdate(id: string, name: string, category: string) {
+    setDocs((prev) => prev.map((d) => d.id === id ? { ...d, name, category } : d));
   }
 
   const filtered = docs.filter((d) => {
@@ -90,9 +222,7 @@ export default function KnowledgePage() {
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
-          <label
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20 hover:bg-accent-blue/20 text-accent-blue text-sm font-medium transition-colors cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}
-          >
+          <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20 hover:bg-accent-blue/20 text-accent-blue text-sm font-medium transition-colors cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
             <Upload size={14} />
             {uploading ? "Uploading…" : "Upload Document"}
             <input
@@ -155,43 +285,9 @@ export default function KnowledgePage() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((doc) => {
-            const Icon = FILE_ICONS[doc.file_type] || File;
-            return (
-              <div key={doc.id} className="glass rounded-xl border border-white/[0.06] p-4 flex items-center gap-4 hover:border-white/[0.12] transition-colors">
-                <div className="w-9 h-9 rounded-xl bg-accent-blue/10 flex items-center justify-center flex-shrink-0">
-                  <Icon size={16} className="text-accent-blue" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-text-primary text-sm font-medium truncate">{doc.name}</p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-text-muted">{doc.category}</span>
-                    <span className="text-[10px] text-text-muted/50">{doc.file_type}</span>
-                    {doc.file_size_kb > 0 && <span className="text-[10px] text-text-muted/50">{fmt(doc.file_size_kb)}</span>}
-                    <span className="text-[10px] text-text-muted/40">
-                      {new Date(doc.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <a
-                    href={`/api/portal/knowledge/download/${doc.id}`}
-                    className="p-2 rounded-lg text-text-muted hover:text-accent-blue hover:bg-accent-blue/10 transition-colors"
-                    title="Download"
-                  >
-                    <Download size={14} />
-                  </a>
-                  <button
-                    onClick={() => handleDelete(doc.id)}
-                    className="p-2 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+          {filtered.map((doc) => (
+            <DocRow key={doc.id} doc={doc} onDelete={handleDelete} onUpdate={handleUpdate} />
+          ))}
         </div>
       )}
     </div>
