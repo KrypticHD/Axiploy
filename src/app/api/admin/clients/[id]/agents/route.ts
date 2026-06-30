@@ -37,6 +37,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json({ success: true });
 }
 
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = getSession(req);
+  if (session?.role !== "axiploy_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const { id: clientId } = await params;
+  const { agentId, config } = await req.json();
+
+  if (!agentId || !config) return NextResponse.json({ error: "Missing agentId or config" }, { status: 400 });
+
+  const { error } = await supabaseAdmin()
+    .from("digital_employees")
+    .update({ config })
+    .eq("id", agentId)
+    .eq("client_id", clientId);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}
+
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = getSession(req);
   if (session?.role !== "axiploy_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });

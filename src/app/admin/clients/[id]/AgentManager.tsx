@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, UserCheck, ClipboardList, TrendingUp, Bot } from "lucide-react";
+import { Plus, Trash2, UserCheck, ClipboardList, TrendingUp, Bot, Settings, ChevronDown, ChevronUp, X, PlusCircle, Check } from "lucide-react";
 
 const AGENT_TEMPLATES = [
   { type: "onboarding", name: "AI Onboarding Assistant", description: "Automates employee onboarding — documents, forms, follow-ups.", icon: UserCheck },
@@ -10,19 +10,209 @@ const AGENT_TEMPLATES = [
   { type: "growth", name: "AI Growth Assistant", description: "Lead follow-up, client engagement, pipeline management.", icon: TrendingUp },
 ];
 
+const DEFAULT_DOCS = ["Employment Contract", "Tax File Number Declaration", "Right to Work", "Bank Details", "Emergency Contact Form"];
+
+interface AgentConfig {
+  emailSenderName?: string;
+  emailSenderAddress?: string;
+  reminderFrequencyDays?: number;
+  escalationDays?: number;
+  managerApproval?: boolean;
+  knowledgeBase?: boolean;
+  requiredDocuments?: string[];
+}
+
 interface Agent {
   id: string;
   name: string;
   type: string;
   status: string;
+  config?: AgentConfig;
 }
 
-export default function AgentManager({ clientId, agents }: { clientId: string; agents: Agent[] }) {
+function OnboardingConfigPanel({ agent, clientId, onSaved }: { agent: Agent; clientId: string; onSaved: (id: string, config: AgentConfig) => void }) {
+  const cfg = agent.config || {};
+  const [emailSenderName, setEmailSenderName] = useState(cfg.emailSenderName || "Axiploy");
+  const [emailSenderAddress, setEmailSenderAddress] = useState(cfg.emailSenderAddress || "");
+  const [reminderFrequencyDays, setReminderFrequencyDays] = useState(cfg.reminderFrequencyDays ?? 2);
+  const [escalationDays, setEscalationDays] = useState(cfg.escalationDays ?? 7);
+  const [managerApproval, setManagerApproval] = useState(cfg.managerApproval ?? true);
+  const [knowledgeBase, setKnowledgeBase] = useState(cfg.knowledgeBase ?? true);
+  const [requiredDocuments, setRequiredDocuments] = useState<string[]>(cfg.requiredDocuments ?? DEFAULT_DOCS);
+  const [newDoc, setNewDoc] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  function addDoc() {
+    const trimmed = newDoc.trim();
+    if (!trimmed || requiredDocuments.includes(trimmed)) return;
+    setRequiredDocuments((prev) => [...prev, trimmed]);
+    setNewDoc("");
+  }
+
+  function removeDoc(doc: string) {
+    setRequiredDocuments((prev) => prev.filter((d) => d !== doc));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    const config: AgentConfig = {
+      emailSenderName,
+      emailSenderAddress,
+      reminderFrequencyDays,
+      escalationDays,
+      managerApproval,
+      knowledgeBase,
+      requiredDocuments,
+    };
+    const res = await fetch(`/api/admin/clients/${clientId}/agents`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentId: agent.id, config }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      onSaved(agent.id, config);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+  }
+
+  return (
+    <div className="mt-3 p-5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-5">
+      {/* Email sender */}
+      <div>
+        <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Email Sender</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-text-muted text-xs mb-1 block">Sender Name</label>
+            <input
+              value={emailSenderName}
+              onChange={(e) => setEmailSenderName(e.target.value)}
+              className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40"
+              placeholder="Axiploy"
+            />
+          </div>
+          <div>
+            <label className="text-text-muted text-xs mb-1 block">Reply-To Address</label>
+            <input
+              value={emailSenderAddress}
+              onChange={(e) => setEmailSenderAddress(e.target.value)}
+              className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40"
+              placeholder="onboarding@yourdomain.com"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Timing */}
+      <div>
+        <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Timing</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-text-muted text-xs mb-1 block">Reminder Frequency (days)</label>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              value={reminderFrequencyDays}
+              onChange={(e) => setReminderFrequencyDays(Number(e.target.value))}
+              className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40"
+            />
+            <p className="text-text-muted/50 text-[10px] mt-1">Days between document reminders</p>
+          </div>
+          <div>
+            <label className="text-text-muted text-xs mb-1 block">Escalation Period (days)</label>
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={escalationDays}
+              onChange={(e) => setEscalationDays(Number(e.target.value))}
+              className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40"
+            />
+            <p className="text-text-muted/50 text-[10px] mt-1">Days before start date to flag as high risk</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Toggles */}
+      <div>
+        <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Options</p>
+        <div className="space-y-3">
+          {[
+            { label: "Manager Approval Required", desc: "Manager must approve before onboarding is marked complete", value: managerApproval, set: setManagerApproval },
+            { label: "Knowledge Base Access", desc: "AI can reference this client's Knowledge Base documents", value: knowledgeBase, set: setKnowledgeBase },
+          ].map(({ label, desc, value, set }) => (
+            <div key={label} className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+              <div>
+                <p className="text-text-primary text-sm">{label}</p>
+                <p className="text-text-muted text-xs mt-0.5">{desc}</p>
+              </div>
+              <button
+                onClick={() => set(!value)}
+                className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${value ? "bg-accent-blue" : "bg-white/[0.12]"}`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${value ? "translate-x-5" : "translate-x-0.5"}`} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Required documents */}
+      <div>
+        <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Required Documents</p>
+        <div className="space-y-2 mb-3">
+          {requiredDocuments.map((doc) => (
+            <div key={doc} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+              <span className="text-text-primary text-sm">{doc}</span>
+              <button onClick={() => removeDoc(doc)} className="text-text-muted hover:text-red-400 transition-colors">
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            value={newDoc}
+            onChange={(e) => setNewDoc(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addDoc()}
+            placeholder="Add document type..."
+            className="flex-1 px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40"
+          />
+          <button
+            onClick={addDoc}
+            disabled={!newDoc.trim()}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm hover:bg-accent-blue/20 transition-colors disabled:opacity-40"
+          >
+            <PlusCircle size={14} /> Add
+          </button>
+        </div>
+      </div>
+
+      {/* Save */}
+      <div className="pt-1">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50"
+        >
+          {saved ? <><Check size={14} /> Saved</> : saving ? "Saving..." : "Save Configuration"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function AgentManager({ clientId, agents: initialAgents }: { clientId: string; agents: Agent[] }) {
   const router = useRouter();
+  const [agents, setAgents] = useState<Agent[]>(initialAgents);
   const [adding, setAdding] = useState(false);
   const [selectedType, setSelectedType] = useState("");
   const [loading, setLoading] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [configuringId, setConfiguringId] = useState<string | null>(null);
 
   const assignedTypes = new Set(agents.map((a) => a.type));
   const available = AGENT_TEMPLATES.filter((t) => !assignedTypes.has(t.type));
@@ -31,7 +221,7 @@ export default function AgentManager({ clientId, agents }: { clientId: string; a
     if (!selectedType) return;
     setLoading(true);
     const template = AGENT_TEMPLATES.find((t) => t.type === selectedType)!;
-    await fetch(`/api/admin/clients/${clientId}/agents`, {
+    const res = await fetch(`/api/admin/clients/${clientId}/agents`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: template.name, type: template.type }),
@@ -39,7 +229,7 @@ export default function AgentManager({ clientId, agents }: { clientId: string; a
     setAdding(false);
     setSelectedType("");
     setLoading(false);
-    router.refresh();
+    if (res.ok) router.refresh();
   }
 
   async function handleRemove(agentId: string) {
@@ -53,13 +243,16 @@ export default function AgentManager({ clientId, agents }: { clientId: string; a
     router.refresh();
   }
 
+  function handleConfigSaved(agentId: string, config: AgentConfig) {
+    setAgents((prev) => prev.map((a) => a.id === agentId ? { ...a, config } : a));
+  }
+
   const typeIcons: Record<string, React.FC<{ size?: number; className?: string }>> = {
     onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp,
   };
 
   return (
     <div className="space-y-6">
-      {/* Assigned agents */}
       <div className="glass rounded-2xl p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-heading font-semibold text-text-primary">Assigned AI Agents</h2>
@@ -73,7 +266,6 @@ export default function AgentManager({ clientId, agents }: { clientId: string; a
           )}
         </div>
 
-        {/* Add agent panel */}
         {adding && (
           <div className="mb-5 p-4 rounded-xl bg-white/[0.03] border border-white/[0.08] space-y-3">
             <p className="text-text-muted text-xs font-medium">Select agent to assign:</p>
@@ -122,25 +314,53 @@ export default function AgentManager({ clientId, agents }: { clientId: string; a
           <div className="space-y-3">
             {agents.map((agent) => {
               const Icon = typeIcons[agent.type] || Bot;
+              const isConfiguring = configuringId === agent.id;
+              const hasConfig = agent.config && Object.keys(agent.config).length > 0;
               return (
-                <div key={agent.id} className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-blue/20 to-accent-cyan/10 flex items-center justify-center">
-                      <Icon size={16} className="text-accent-cyan" />
+                <div key={agent.id} className="rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-blue/20 to-accent-cyan/10 flex items-center justify-center">
+                        <Icon size={16} className="text-accent-cyan" />
+                      </div>
+                      <div>
+                        <p className="text-text-primary text-sm font-medium">{agent.name}</p>
+                        <p className="text-text-muted text-xs capitalize">
+                          {agent.type} · {agent.status}
+                          {hasConfig && <span className="ml-2 text-emerald-400">· Configured</span>}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-text-primary text-sm font-medium">{agent.name}</p>
-                      <p className="text-text-muted text-xs capitalize">{agent.type} · {agent.status}</p>
+                    <div className="flex items-center gap-2">
+                      {agent.type === "onboarding" && (
+                        <button
+                          onClick={() => setConfiguringId(isConfiguring ? null : agent.id)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                            isConfiguring
+                              ? "bg-accent-blue/20 border-accent-blue/30 text-accent-blue"
+                              : "bg-white/[0.04] border-white/[0.10] text-text-muted hover:text-text-primary hover:bg-white/[0.08]"
+                          }`}
+                        >
+                          <Settings size={12} />
+                          Configure
+                          {isConfiguring ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleRemove(agent.id)}
+                        disabled={removingId === agent.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 size={12} />
+                        {removingId === agent.id ? "Removing..." : "Remove"}
+                      </button>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleRemove(agent.id)}
-                    disabled={removingId === agent.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                  >
-                    <Trash2 size={12} />
-                    {removingId === agent.id ? "Removing..." : "Remove"}
-                  </button>
+                  {isConfiguring && agent.type === "onboarding" && (
+                    <div className="px-4 pb-4">
+                      <OnboardingConfigPanel agent={agent} clientId={clientId} onSaved={handleConfigSaved} />
+                    </div>
+                  )}
                 </div>
               );
             })}

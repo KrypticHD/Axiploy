@@ -9,7 +9,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
   const [clientRes, agentsRes] = await Promise.all([
     supabaseAdmin().from("clients").select("id, name, plan, created_at").eq("id", id).single(),
-    supabaseAdmin().from("digital_employees").select("id, name, type, status").eq("client_id", id).order("created_at", { ascending: true }),
+    supabaseAdmin().from("digital_employees").select("id, name, type, status, config").eq("client_id", id).order("created_at", { ascending: true }),
   ]);
 
   if (!clientRes.data) notFound();
