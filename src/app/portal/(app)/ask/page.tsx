@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, RotateCcw, Plus, MessageSquare, Trash2, Clock } from "lucide-react";
+import { Send, RotateCcw, Plus, MessageSquare, Trash2, Clock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { AskResponse } from "@/lib/types";
 import ChatMessage from "@/components/portal/ChatMessage";
 import SuggestedPrompts from "@/components/portal/SuggestedPrompts";
@@ -58,6 +58,7 @@ export default function AskAxiployPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -170,48 +171,62 @@ export default function AskAxiployPage() {
     <div className="flex h-full max-h-[calc(100vh-4rem)] -m-5 lg:-m-7">
 
       {/* History sidebar */}
-      <div className="hidden lg:flex flex-col w-60 shrink-0 border-r border-white/[0.06] bg-surface/50">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
-          <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">History</p>
-          <button
-            onClick={newChat}
-            title="New chat"
-            className="p-1.5 rounded-lg text-text-muted hover:text-accent-blue hover:bg-accent-blue/10 transition-colors"
-          >
-            <Plus size={14} />
-          </button>
+      <div className={`hidden lg:flex flex-col shrink-0 border-r border-white/[0.06] bg-surface/50 transition-all duration-300 ${historyOpen ? "w-60" : "w-12"}`}>
+        <div className={`flex items-center border-b border-white/[0.06] py-3 ${historyOpen ? "justify-between px-4" : "justify-center px-0"}`}>
+          {historyOpen && <p className="text-xs font-semibold text-text-muted uppercase tracking-wider">History</p>}
+          <div className={`flex items-center gap-1 ${historyOpen ? "" : "flex-col gap-2"}`}>
+            {historyOpen && (
+              <button onClick={newChat} title="New chat" className="p-1.5 rounded-lg text-text-muted hover:text-accent-blue hover:bg-accent-blue/10 transition-colors">
+                <Plus size={14} />
+              </button>
+            )}
+            <button onClick={() => setHistoryOpen((v) => !v)} title={historyOpen ? "Collapse history" : "Open history"} className="p-1.5 rounded-lg text-text-muted hover:text-accent-blue hover:bg-accent-blue/10 transition-colors">
+              {historyOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-2">
-          {conversations.length === 0 ? (
-            <div className="px-4 py-6 text-center">
-              <Clock size={16} className="text-text-muted/30 mx-auto mb-2" />
-              <p className="text-text-muted/50 text-xs">No conversations yet</p>
-            </div>
-          ) : (
-            conversations.map((conv) => (
-              <button
-                key={conv.id}
-                onClick={() => selectConversation(conv)}
-                className={`group w-full text-left px-4 py-3 flex items-start gap-2 transition-colors hover:bg-white/[0.04] ${activeId === conv.id ? "bg-accent-blue/10 border-r-2 border-accent-blue" : ""}`}
-              >
-                <MessageSquare size={13} className={`mt-0.5 flex-shrink-0 ${activeId === conv.id ? "text-accent-blue" : "text-text-muted/40"}`} />
-                <div className="flex-1 min-w-0">
-                  <p className={`text-xs truncate ${activeId === conv.id ? "text-accent-blue" : "text-text-muted"}`}>
-                    {conv.title}
-                  </p>
-                  <p className="text-[10px] text-text-muted/40 mt-0.5">{timeLabel(conv.updatedAt)}</p>
-                </div>
+        {historyOpen && (
+          <div className="flex-1 overflow-y-auto py-2">
+            {conversations.length === 0 ? (
+              <div className="px-4 py-6 text-center">
+                <Clock size={16} className="text-text-muted/30 mx-auto mb-2" />
+                <p className="text-text-muted/50 text-xs">No conversations yet</p>
+              </div>
+            ) : (
+              conversations.map((conv) => (
                 <button
-                  onClick={(e) => deleteConversation(conv.id, e)}
-                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-text-muted/50 hover:text-red-400 transition-all flex-shrink-0"
+                  key={conv.id}
+                  onClick={() => selectConversation(conv)}
+                  className={`group w-full text-left px-4 py-3 flex items-start gap-2 transition-colors hover:bg-white/[0.04] ${activeId === conv.id ? "bg-accent-blue/10 border-r-2 border-accent-blue" : ""}`}
                 >
-                  <Trash2 size={11} />
+                  <MessageSquare size={13} className={`mt-0.5 flex-shrink-0 ${activeId === conv.id ? "text-accent-blue" : "text-text-muted/40"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs truncate ${activeId === conv.id ? "text-accent-blue" : "text-text-muted"}`}>{conv.title}</p>
+                    <p className="text-[10px] text-text-muted/40 mt-0.5">{timeLabel(conv.updatedAt)}</p>
+                  </div>
+                  <button onClick={(e) => deleteConversation(conv.id, e)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-text-muted/50 hover:text-red-400 transition-all flex-shrink-0">
+                    <Trash2 size={11} />
+                  </button>
                 </button>
+              ))
+            )}
+          </div>
+        )}
+
+        {!historyOpen && (
+          <div className="flex-1 flex flex-col items-center py-3 gap-2 overflow-hidden">
+            <button onClick={newChat} title="New chat" className="p-1.5 rounded-lg text-text-muted hover:text-accent-blue hover:bg-accent-blue/10 transition-colors">
+              <Plus size={14} />
+            </button>
+            {conversations.slice(0, 8).map((conv) => (
+              <button key={conv.id} onClick={() => { setHistoryOpen(true); selectConversation(conv); }} title={conv.title}
+                className={`p-1.5 rounded-lg transition-colors ${activeId === conv.id ? "text-accent-blue bg-accent-blue/10" : "text-text-muted/40 hover:text-text-muted hover:bg-white/[0.04]"}`}>
+                <MessageSquare size={13} />
               </button>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main chat */}
