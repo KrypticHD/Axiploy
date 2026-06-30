@@ -7,15 +7,21 @@ import AgentManager from "./AgentManager";
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [clientRes, agentsRes] = await Promise.all([
+  const [clientRes, agentsRes, onboardingRes, workflowRes, allClientsRes] = await Promise.all([
     supabaseAdmin().from("clients").select("id, name, plan, created_at").eq("id", id).single(),
-    supabaseAdmin().from("digital_employees").select("id, name, type, status, config").eq("client_id", id).order("created_at", { ascending: true }),
+    supabaseAdmin().from("digital_employees").select("id, name, type, status, tasks_completed, hours_saved, success_rate, config").eq("client_id", id).order("created_at", { ascending: true }),
+    supabaseAdmin().from("onboarding").select("id").eq("client_id", id),
+    supabaseAdmin().from("workflow_runs").select("status, created_at").eq("client_id", id).order("created_at", { ascending: false }).limit(1),
+    supabaseAdmin().from("clients").select("id, name"),
   ]);
 
   if (!clientRes.data) notFound();
 
   const client = clientRes.data;
   const agents = agentsRes.data || [];
+  const employeesManaged = (onboardingRes.data || []).length;
+  const lastRun = (workflowRes.data || [])[0] || null;
+  const allClients = (allClientsRes.data || []).filter((c) => c.id !== id);
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -55,7 +61,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      <AgentManager clientId={id} agents={agents} />
+      <AgentManager clientId={id} agents={agents} employeesManaged={employeesManaged} lastRun={lastRun} allClients={allClients} />
     </div>
   );
 }
