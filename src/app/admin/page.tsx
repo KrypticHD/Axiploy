@@ -12,14 +12,19 @@ async function getAdminSession() {
 }
 
 export default async function AdminPage() {
-  const [session, clientsRes, agentsRes] = await Promise.all([
+  const [session, clientsRes, agentsRes, usersRes] = await Promise.all([
     getAdminSession(),
     supabaseAdmin().from("clients").select("id, name, plan, created_at").order("created_at", { ascending: false }),
     supabaseAdmin().from("digital_employees").select("client_id, status"),
+    supabaseAdmin().from("users").select("client_id, email").eq("role", "client_admin"),
   ]);
 
   const clients = clientsRes.data || [];
   const agents = agentsRes.data || [];
+  const emailByClient = (usersRes.data || []).reduce<Record<string, string>>((acc, u) => {
+    if (!acc[u.client_id]) acc[u.client_id] = u.email;
+    return acc;
+  }, {});
 
   const agentCountByClient = agents.reduce<Record<string, number>>((acc, a) => {
     acc[a.client_id] = (acc[a.client_id] || 0) + 1;
@@ -54,7 +59,7 @@ export default async function AdminPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/[0.06]">
-                {["Business", "Plan", "AI Agents", "Created", ""].map((h) => (
+                {["Business", "Email", "Plan", "AI Agents", "Created", ""].map((h) => (
                   <th key={h} className="text-left text-text-muted text-xs font-medium px-5 py-3">{h}</th>
                 ))}
               </tr>
@@ -68,6 +73,7 @@ export default async function AdminPage() {
               {clients.map((c) => (
                 <tr key={c.id} className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.02]">
                   <td className="px-5 py-4 text-text-primary text-sm font-medium">{c.name}</td>
+                  <td className="px-5 py-4 text-text-muted text-sm">{emailByClient[c.id] || "—"}</td>
                   <td className="px-5 py-4">
                     <span className="text-xs px-2 py-1 rounded-full bg-accent-blue/10 text-accent-blue border border-accent-blue/20 capitalize">
                       {c.plan || "starter"}
