@@ -48,6 +48,14 @@ export default function SettingsPage() {
     fetch("/api/portal/me")
       .then((r) => r.json())
       .then((d) => setProfileForm({ name: d.name || "", email: d.email || "" }));
+    fetch("/api/portal/settings/preferences")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.preferences && Object.keys(d.preferences).length > 0) {
+          setNotifs((prev) => ({ ...prev, ...d.preferences }));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   async function handleSave() {
@@ -64,6 +72,16 @@ export default function SettingsPage() {
       const d = await res.json();
       setSaveError(d.error || "Failed to save");
     }
+  }
+
+  async function handlePrefsSave() {
+    await fetch("/api/portal/settings/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preferences: notifs }),
+    });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   }
 
   async function handlePwSave(e: React.FormEvent) {
@@ -188,7 +206,7 @@ export default function SettingsPage() {
               </button>
             </div>
           ))}
-          <button onClick={handleSave} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium transition-colors">
+          <button onClick={handlePrefsSave} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium transition-colors">
             {saved ? <><CheckCircle2 size={14} /> Saved</> : "Save Preferences"}
           </button>
         </div>

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Bell, CheckSquare, AlertTriangle, XCircle, Clock, CheckCheck, ExternalLink } from "lucide-react";
-import { MOCK_APPROVALS, MOCK_ONBOARDING, MOCK_ACTIVITY } from "@/lib/mock-data";
 
 type NotifType = "approval" | "risk" | "failed" | "overdue" | "error";
 
@@ -14,22 +13,9 @@ interface Notification {
   body: string;
   href: string;
   time: string;
-  read: boolean;
 }
 
-function buildMockNotifications(): Notification[] {
-  const items: Notification[] = [];
-  MOCK_APPROVALS.filter((a) => a.status === "pending").forEach((a) => {
-    items.push({ id: `appr-${a.id}`, type: "approval", title: "Approval Required", body: `${a.digitalEmployee} wants to ${a.actionType.toLowerCase()} for ${a.relatedPerson}.`, href: "/portal/approvals", time: a.createdAt, read: false });
-  });
-  MOCK_ONBOARDING.filter((e) => ["High", "Critical"].includes(e.riskLevel)).forEach((e) => {
-    items.push({ id: `risk-${e.id}`, type: "risk", title: `High Risk: ${e.employeeName}`, body: `${e.riskLevel} risk — ${e.missingDocuments} document${e.missingDocuments !== 1 ? "s" : ""} missing.`, href: `/portal/onboarding/${e.id}`, time: e.lastContacted, read: false });
-  });
-  MOCK_ACTIVITY.filter((a) => a.status === "warning" || a.status === "error").forEach((a) => {
-    items.push({ id: `act-${a.id}`, type: "failed", title: "Workflow Issue", body: `${a.digitalEmployee}: ${a.action} — ${a.result}`, href: "/portal/activity", time: a.timestamp, read: true });
-  });
-  return items.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-}
+const DISMISSED_KEY = "axiploy_dismissed_notifications";
 
 const ICON: Record<NotifType, React.FC<{ size?: number; className?: string }>> = {
   approval: CheckSquare, risk: AlertTriangle, failed: XCircle, overdue: Clock, error: XCircle,
@@ -48,41 +34,60 @@ const HREF: Record<NotifType, string> = {
   failed: "/portal/activity", overdue: "/portal/onboarding", error: "/portal/workflows",
 };
 
+function getDismissed(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch { return new Set(); }
+}
+
+function saveDismissed(ids: Set<string>) {
+  try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...ids])); } catch {}
+}
+
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [read, setRead] = useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const initial = getDismissed();
+    setDismissed(initial);
+
     fetch("/api/portal/notifications")
       .then((r) => r.json())
       .then((data) => {
-        if (data.notifications?.length > 0) {
-          const mapped: Notification[] = data.notifications.map((n: Record<string, string>) => ({
-            id: n.id,
-            type: n.type as NotifType,
-            title: n.title,
-            body: n.body,
-            href: HREF[n.type as NotifType] || "/portal/dashboard",
-            time: n.createdAt,
-            read: false,
-          }));
-          setNotifications(mapped);
-        } else {
-          const mock = buildMockNotifications();
-          setNotifications(mock);
-          setRead(new Set(mock.filter((n) => n.read).map((n) => n.id)));
-        }
+        const mapped: Notification[] = (data.notifications || []).map((n: Record<string, string>) => ({
+          id: n.id,
+          type: n.type as NotifType,
+          title: n.title,
+          body: n.body,
+          href: HREF[n.type as NotifType] || "/portal/dashboard",
+          time: n.createdAt,
+        }));
+        setNotifications(mapped);
       })
-      .catch(() => {
-        const mock = buildMockNotifications();
-        setNotifications(mock);
-        setRead(new Set(mock.filter((n) => n.read).map((n) => n.id)));
-      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  const unread = notifications.filter((n) => !read.has(n.id)).length;
+  function markRead(id: string) {
+    setDismissed((prev) => {
+      const next = new Set([...prev, id]);
+      saveDismissed(next);
+      return next;
+    });
+  }
+
+  function markAllRead() {
+    setDismissed((prev) => {
+      const next = new Set([...prev, ...notifications.map((n) => n.id)]);
+      saveDismissed(next);
+      return next;
+    });
+  }
+
+  const unread = notifications.filter((n) => !dismissed.has(n.id)).length;
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -95,7 +100,7 @@ export default function NotificationsPage() {
         </div>
         {unread > 0 && (
           <button
-            onClick={() => setRead(new Set(notifications.map((n) => n.id)))}
+            onClick={markAllRead}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-white/[0.10] hover:border-accent-blue/30 hover:text-accent-blue text-text-muted text-xs font-medium transition-colors"
           >
             <CheckCheck size={13} /> Mark all read
@@ -112,12 +117,12 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {notifications.map((n) => {
             const Icon = ICON[n.type];
-            const isRead = read.has(n.id);
+            const isRead = dismissed.has(n.id);
             return (
               <div
                 key={n.id}
                 className={`glass rounded-xl border border-white/[0.06] p-4 cursor-pointer transition-all ${!isRead ? "border-l-2 border-l-accent-blue" : ""}`}
-                onClick={() => setRead((prev) => new Set([...prev, n.id]))}
+                onClick={() => markRead(n.id)}
               >
                 <div className="flex items-start gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${COLOUR[n.type]}`}>

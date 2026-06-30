@@ -1,109 +1,136 @@
 "use client";
 
-import { useState } from "react";
-import { BookOpen, Upload, FileText, File, Search, Download, Folder } from "lucide-react";
+import { useState, useEffect } from "react";
+import { BookOpen, Upload, Download, Trash2, Search, FileText, File, Image, Table } from "lucide-react";
 
-type Category = "All" | "Policies" | "SOPs" | "Forms" | "Contracts" | "Safety" | "Templates";
+interface KnowledgeDoc {
+  id: string;
+  name: string;
+  category: string;
+  file_type: string;
+  file_size_kb: number;
+  created_at: string;
+}
 
-const CATEGORIES: Category[] = ["All", "Policies", "SOPs", "Forms", "Contracts", "Safety", "Templates"];
+const CATEGORIES = ["All", "Policies", "SOPs", "Forms", "Contracts", "Safety", "Templates"];
 
-const DOCS = [
-  { id: "1", name: "Employee Handbook 2024", category: "Policies", size: "2.4 MB", updatedAt: "2024-11-01", type: "pdf" },
-  { id: "2", name: "Right to Work Verification SOP", category: "SOPs", size: "840 KB", updatedAt: "2024-10-15", type: "pdf" },
-  { id: "3", name: "New Starter Induction SOP", category: "SOPs", size: "1.1 MB", updatedAt: "2024-10-20", type: "pdf" },
-  { id: "4", name: "P45 / P60 Request Form", category: "Forms", size: "120 KB", updatedAt: "2024-09-05", type: "docx" },
-  { id: "5", name: "Employment Contract Template", category: "Contracts", size: "310 KB", updatedAt: "2024-11-10", type: "docx" },
-  { id: "6", name: "Zero Hours Contract Template", category: "Contracts", size: "290 KB", updatedAt: "2024-10-30", type: "docx" },
-  { id: "7", name: "Health & Safety Policy", category: "Safety", size: "1.8 MB", updatedAt: "2024-08-12", type: "pdf" },
-  { id: "8", name: "COSHH Assessment Form", category: "Safety", size: "220 KB", updatedAt: "2024-09-18", type: "pdf" },
-  { id: "9", name: "Onboarding Document Checklist", category: "Templates", size: "95 KB", updatedAt: "2024-11-05", type: "xlsx" },
-  { id: "10", name: "Welcome Email Template", category: "Templates", size: "48 KB", updatedAt: "2024-10-22", type: "docx" },
-  { id: "11", name: "GDPR Data Processing Policy", category: "Policies", size: "670 KB", updatedAt: "2024-07-30", type: "pdf" },
-  { id: "12", name: "Annual Leave Request Form", category: "Forms", size: "88 KB", updatedAt: "2024-09-01", type: "pdf" },
-];
-
-const TYPE_COLOUR: Record<string, string> = {
-  pdf: "text-red-400 bg-red-500/10",
-  docx: "text-accent-blue bg-accent-blue/10",
-  xlsx: "text-emerald-400 bg-emerald-500/10",
+const FILE_ICONS: Record<string, React.FC<{ size?: number; className?: string }>> = {
+  PDF: FileText, DOCX: File, DOC: File, XLSX: Table, XLS: Table, PNG: Image, JPG: Image,
 };
 
-function fmt(d: string) {
-  return new Date(d).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" });
+function fmt(kb: number): string {
+  if (kb < 1024) return `${kb} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
 }
 
 export default function KnowledgePage() {
-  const [cat, setCat] = useState<Category>("All");
-  const [search, setSearch] = useState("");
+  const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
+  const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All");
+  const [uploadCategory, setUploadCategory] = useState("Policies");
+  useEffect(() => {
+    fetch("/api/portal/knowledge")
+      .then((r) => r.json())
+      .then((d) => setDocs(d.documents || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filtered = DOCS.filter(
-    (d) =>
-      (cat === "All" || d.category === cat) &&
-      d.name.toLowerCase().includes(search.toLowerCase())
-  );
-
-  function handleUpload() {
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
     setUploading(true);
-    setTimeout(() => setUploading(false), 2000);
+    setUploadError("");
+
+    const form = new FormData();
+    form.append("file", file);
+    form.append("category", uploadCategory);
+
+    try {
+      const res = await fetch("/api/portal/knowledge/upload", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) { setUploadError(data.error || "Upload failed"); return; }
+      setDocs((prev) => [data.document, ...prev]);
+    } catch {
+      setUploadError("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   }
 
+  async function handleDelete(id: string) {
+    if (!confirm("Delete this document?")) return;
+    const res = await fetch("/api/portal/knowledge", { method: "DELETE", body: JSON.stringify({ id }), headers: { "Content-Type": "application/json" } });
+    if (res.ok) setDocs((prev) => prev.filter((d) => d.id !== id));
+  }
+
+  const filtered = docs.filter((d) => {
+    const matchCat = category === "All" || d.category === category;
+    const matchSearch = !search || d.name.toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div className="flex items-start justify-between gap-4">
+    <div className="space-y-6 max-w-3xl">
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="font-heading text-2xl font-bold text-text-primary">Knowledge Base</h1>
-          <p className="text-text-muted text-sm mt-1">
-            Policies, SOPs, forms, contracts and templates — accessible to your AI workforce.
-          </p>
+          <p className="text-text-muted text-sm mt-1">Upload and manage documents for your AI workforce.</p>
         </div>
-        <button
-          onClick={handleUpload}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium transition-colors flex-shrink-0"
-        >
-          {uploading ? (
-            <span className="animate-pulse">Uploading…</span>
-          ) : (
-            <><Upload size={14} /> Upload Document</>
-          )}
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={uploadCategory}
+            onChange={(e) => setUploadCategory(e.target.value)}
+            className="text-xs text-text-muted bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 [color-scheme:dark]"
+          >
+            {CATEGORIES.filter((c) => c !== "All").map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+          <label
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20 hover:bg-accent-blue/20 text-accent-blue text-sm font-medium transition-colors cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}
+          >
+            <Upload size={14} />
+            {uploading ? "Uploading…" : "Upload Document"}
+            <input
+              type="file"
+              accept=".pdf,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg"
+              className="hidden"
+              disabled={uploading}
+              onChange={handleUpload}
+            />
+          </label>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          { label: "Total documents", value: DOCS.length, icon: FileText },
-          { label: "Policies", value: DOCS.filter((d) => d.category === "Policies").length, icon: BookOpen },
-          { label: "Forms", value: DOCS.filter((d) => d.category === "Forms").length, icon: File },
-          { label: "Templates", value: DOCS.filter((d) => d.category === "Templates").length, icon: Folder },
-        ].map((s) => (
-          <div key={s.label} className="glass rounded-xl border border-white/[0.06] p-4">
-            <s.icon size={16} className="text-accent-blue mb-2" />
-            <p className="font-heading font-bold text-xl text-text-primary">{s.value}</p>
-            <p className="text-text-muted text-xs mt-0.5">{s.label}</p>
-          </div>
-        ))}
-      </div>
+      {uploadError && (
+        <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+          {uploadError}
+        </div>
+      )}
 
-      {/* Search + filter */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted/50" />
           <input
-            type="text"
-            placeholder="Search documents…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-sm text-text-primary placeholder-text-muted/40 focus:outline-none focus:border-accent-blue/50 transition-all"
+            placeholder="Search documents…"
+            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white/[0.04] border border-white/[0.08] rounded-xl text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40"
           />
         </div>
-        <div className="flex gap-1 p-1 glass rounded-xl border border-white/[0.06] overflow-x-auto">
+        <div className="flex gap-2 flex-wrap">
           {CATEGORIES.map((c) => (
             <button
               key={c}
-              onClick={() => setCat(c)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
-                cat === c ? "bg-accent-blue text-white" : "text-text-muted hover:text-text-primary"
+              onClick={() => setCategory(c)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                category === c
+                  ? "bg-accent-blue/20 text-accent-blue border border-accent-blue/30"
+                  : "text-text-muted border border-white/[0.08] hover:border-white/20"
               }`}
             >
               {c}
@@ -112,52 +139,61 @@ export default function KnowledgePage() {
         </div>
       </div>
 
-      {/* Document list */}
-      <div className="glass rounded-2xl border border-white/[0.08] overflow-hidden">
-        <div className="grid grid-cols-12 px-5 py-3 border-b border-white/[0.06] text-[10px] font-semibold text-text-muted/50 uppercase tracking-wider">
-          <div className="col-span-5">Document</div>
-          <div className="col-span-2">Category</div>
-          <div className="col-span-2">Type</div>
-          <div className="col-span-2">Updated</div>
-          <div className="col-span-1" />
+      {loading ? (
+        <div className="py-10 text-center text-text-muted text-sm">Loading documents…</div>
+      ) : filtered.length === 0 ? (
+        <div className="glass rounded-2xl p-10 text-center border border-white/[0.06]">
+          <BookOpen size={28} className="text-text-muted/30 mx-auto mb-3" />
+          {docs.length === 0 ? (
+            <>
+              <p className="text-text-primary text-sm font-medium">No documents yet</p>
+              <p className="text-text-muted text-xs mt-1">Upload your first document using the button above.</p>
+            </>
+          ) : (
+            <p className="text-text-muted text-sm">No documents match your search.</p>
+          )}
         </div>
-        {filtered.length === 0 ? (
-          <div className="p-10 text-center">
-            <p className="text-text-muted text-sm">No documents found</p>
-          </div>
-        ) : (
-          <div className="divide-y divide-white/[0.04]">
-            {filtered.map((d) => (
-              <div key={d.id} className="grid grid-cols-12 items-center px-5 py-3.5 hover:bg-white/[0.02] transition-colors">
-                <div className="col-span-5 flex items-center gap-3 min-w-0">
-                  <FileText size={14} className="text-text-muted/50 flex-shrink-0" />
-                  <p className="text-text-primary text-sm truncate">{d.name}</p>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((doc) => {
+            const Icon = FILE_ICONS[doc.file_type] || File;
+            return (
+              <div key={doc.id} className="glass rounded-xl border border-white/[0.06] p-4 flex items-center gap-4 hover:border-white/[0.12] transition-colors">
+                <div className="w-9 h-9 rounded-xl bg-accent-blue/10 flex items-center justify-center flex-shrink-0">
+                  <Icon size={16} className="text-accent-blue" />
                 </div>
-                <div className="col-span-2">
-                  <span className="text-xs text-text-muted">{d.category}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-text-primary text-sm font-medium truncate">{doc.name}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-text-muted">{doc.category}</span>
+                    <span className="text-[10px] text-text-muted/50">{doc.file_type}</span>
+                    {doc.file_size_kb > 0 && <span className="text-[10px] text-text-muted/50">{fmt(doc.file_size_kb)}</span>}
+                    <span className="text-[10px] text-text-muted/40">
+                      {new Date(doc.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
                 </div>
-                <div className="col-span-2">
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded uppercase ${TYPE_COLOUR[d.type] ?? "text-text-muted bg-white/[0.04]"}`}>
-                    {d.type}
-                  </span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-xs text-text-muted">{fmt(d.updatedAt)}</span>
-                </div>
-                <div className="col-span-1 flex justify-end">
-                  <button className="p-1.5 rounded-lg text-text-muted/50 hover:text-text-primary hover:bg-white/[0.06] transition-colors">
-                    <Download size={13} />
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <a
+                    href={`/api/portal/knowledge/download/${doc.id}`}
+                    className="p-2 rounded-lg text-text-muted hover:text-accent-blue hover:bg-accent-blue/10 transition-colors"
+                    title="Download"
+                  >
+                    <Download size={14} />
+                  </a>
+                  <button
+                    onClick={() => handleDelete(doc.id)}
+                    className="p-2 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    title="Delete"
+                  >
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <p className="text-xs text-text-muted/50 text-center">
-        Documents uploaded here are made available to your Digital Employees for reference and generation tasks.
-      </p>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

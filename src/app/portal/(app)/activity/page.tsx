@@ -1,8 +1,7 @@
 "use client";
 
 import ActivityItem from "@/components/portal/ActivityItem";
-import { MOCK_ACTIVITY } from "@/lib/mock-data";
-import { Download } from "lucide-react";
+import { Download, Activity } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ActivityEntry } from "@/lib/types";
 
@@ -14,9 +13,9 @@ export default function ActivityPage() {
     fetch("/api/portal/activity")
       .then((r) => r.json())
       .then((data) => {
-        setActivity(data.activity?.length > 0 ? data.activity : MOCK_ACTIVITY);
+        setActivity(data.activity || []);
       })
-      .catch(() => setActivity(MOCK_ACTIVITY))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -54,13 +53,21 @@ export default function ActivityPage() {
         </button>
       </div>
 
-      <div className="glass rounded-2xl px-6 py-2">
-        {loading ? (
-          <div className="py-10 text-center text-text-muted text-sm">Loading activity...</div>
-        ) : activity.map((entry) => (
-          <ActivityItem key={entry.id} entry={entry} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="glass rounded-2xl px-6 py-10 text-center text-text-muted text-sm">Loading activity…</div>
+      ) : activity.length === 0 ? (
+        <div className="glass rounded-2xl p-10 text-center border border-white/[0.06]">
+          <Activity size={28} className="text-text-muted/30 mx-auto mb-3" />
+          <p className="text-text-primary text-sm font-medium">No activity yet</p>
+          <p className="text-text-muted text-xs mt-1">Activity will appear here as your AI employees complete tasks.</p>
+        </div>
+      ) : (
+        <div className="glass rounded-2xl px-6 py-2">
+          {activity.map((entry) => (
+            <ActivityItem key={entry.id} entry={entry} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -7,9 +7,7 @@ import {
   Bot, Clock, CheckSquare, AlertTriangle, BarChart2,
   UserCheck, ClipboardList, TrendingUp, ArrowRight, Plus,
 } from "lucide-react";
-import { MOCK_METRICS, MOCK_DIGITAL_EMPLOYEES, MOCK_ACTIVITY } from "@/lib/mock-data";
 import { supabaseAdmin } from "@/lib/supabase";
-import { isEmptyPreview } from "@/lib/preview";
 
 const deIcons: Record<string, React.FC<{ size?: number; className?: string }>> = {
   onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp,
@@ -25,16 +23,19 @@ async function getSession() {
   try { return JSON.parse(raw); } catch { return null; }
 }
 
+type ActivityEntry = { id: string; clientId: string; digitalEmployee: string; action: string; result: string; timestamp: string; status: "success" | "warning" | "error" };
+type DigitalEmployee = { id: string; clientId: string; name: string; type: "onboarding" | "admin" | "growth"; status: "Active" | "Paused" | "Setup"; stats: { label: string; value: string }[] };
+
 export default async function DashboardPage() {
-  const [session, emptyPreview] = await Promise.all([getSession(), isEmptyPreview()]);
+  const session = await getSession();
   const clientId = session?.clientId;
   const firstName = session?.name?.split(" ")[0] || "there";
   const clientName = session?.clientName || "your company";
 
   let pendingApprovals = 0;
   let highRiskItems = 0;
-  let recentActivity: typeof MOCK_ACTIVITY = [];
-  let digitalEmployees: typeof MOCK_DIGITAL_EMPLOYEES = [];
+  let recentActivity: ActivityEntry[] = [];
+  let digitalEmployees: DigitalEmployee[] = [];
 
   if (clientId) {
     const supabase = supabaseAdmin();
@@ -54,8 +55,6 @@ export default async function DashboardPage() {
         action: a.action, result: a.details || "", timestamp: a.created_at,
         status: a.status as "success" | "warning" | "error",
       }));
-    } else if (!emptyPreview) {
-      recentActivity = MOCK_ACTIVITY.slice(0, 5);
     }
 
     if (deRes.data && deRes.data.length > 0) {
@@ -80,14 +79,7 @@ export default async function DashboardPage() {
           { label: "Completion Rate", value: total > 0 ? `${Math.round((complete / total) * 100)}%` : "—" },
         ],
       }];
-    } else if (!emptyPreview) {
-      digitalEmployees = MOCK_DIGITAL_EMPLOYEES;
     }
-  } else if (!emptyPreview) {
-    recentActivity = MOCK_ACTIVITY.slice(0, 5);
-    digitalEmployees = MOCK_DIGITAL_EMPLOYEES;
-    pendingApprovals = MOCK_METRICS.pendingApprovals;
-    highRiskItems = MOCK_METRICS.highRiskItems;
   }
 
   const tasksCompleted = digitalEmployees.reduce((acc, de) => {
@@ -115,7 +107,7 @@ export default async function DashboardPage() {
         <MetricCard label="Hours Saved" value={`${hoursSaved}h`} icon={Clock} accent="green" sub="This month" />
         <MetricCard label="Pending Approvals" value={pendingApprovals} icon={CheckSquare} accent="amber" />
         <MetricCard label="High Risk Items" value={highRiskItems} icon={AlertTriangle} accent="red" />
-        <MetricCard label="Report Status" value={emptyPreview ? "No data" : "Ready"} icon={BarChart2} accent="cyan" />
+        <MetricCard label="Report Status" value={digitalEmployees.length > 0 ? "Ready" : "No data"} icon={BarChart2} accent="cyan" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
