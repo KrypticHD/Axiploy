@@ -66,8 +66,8 @@ export async function POST(req: NextRequest) {
     let session: { clientId?: string; clientName?: string; id?: string } = {};
     try { if (raw) session = JSON.parse(raw); } catch {}
 
-    if (process.env.ANTHROPIC_API_KEY && session.clientId) {
-      if (session.id && !checkRateLimit(session.id)) {
+    if (process.env.ANTHROPIC_API_KEY && session.id) {
+      if (!checkRateLimit(session.id)) {
         return NextResponse.json({
           response: {
             text: "You've reached the daily limit of 20 AI questions. Come back tomorrow, or contact Axiploy if you need more.",
@@ -75,7 +75,10 @@ export async function POST(req: NextRequest) {
           },
         });
       }
-      const context = await buildClientContext(session.clientId, session.clientName || "your company");
+
+      const context = session.clientId
+        ? await buildClientContext(session.clientId, session.clientName || "your company")
+        : "This is an Axiploy admin account — no specific client context available.";
 
       const { default: Anthropic } = await import("@anthropic-ai/sdk");
       const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
