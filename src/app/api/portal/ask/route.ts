@@ -39,6 +39,22 @@ ${activity.length === 0 ? "No recent activity" : activity.map((a) => `- [${a.sta
 `.trim();
 }
 
+// Simple in-memory rate limit: 20 Claude calls per user per day
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const DAILY_LIMIT = 20;
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + 86_400_000 });
+    return true;
+  }
+  if (entry.count >= DAILY_LIMIT) return false;
+  entry.count++;
+  return true;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { message } = await req.json();
@@ -47,10 +63,18 @@ export async function POST(req: NextRequest) {
     }
 
     const raw = req.cookies.get("axiploy_session")?.value;
-    let session: { clientId?: string; clientName?: string } = {};
+    let session: { clientId?: string; clientName?: string; id?: string } = {};
     try { if (raw) session = JSON.parse(raw); } catch {}
 
     if (process.env.ANTHROPIC_API_KEY && session.clientId) {
+      if (session.id && !checkRateLimit(session.id)) {
+        return NextResponse.json({
+          response: {
+            text: "You've reached the daily limit of 20 AI questions. Come back tomorrow, or contact Axiploy if you need more.",
+            bullets: [], metrics: [], actions: [],
+          },
+        });
+      }
       const context = await buildClientContext(session.clientId, session.clientName || "your company");
 
       const { default: Anthropic } = await import("@anthropic-ai/sdk");
