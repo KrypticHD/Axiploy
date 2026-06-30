@@ -16,10 +16,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!name || !type) return NextResponse.json({ error: "Missing name or type" }, { status: 400 });
 
+  const roleMap: Record<string, string> = {
+    onboarding: "Onboarding",
+    admin: "Admin",
+    growth: "Growth",
+  };
+
   const { error } = await supabaseAdmin().from("digital_employees").insert({
     client_id: clientId,
     name,
     type,
+    role: roleMap[type] || type,
     status: "Active",
     tasks_completed: 0,
     hours_saved: 0,
