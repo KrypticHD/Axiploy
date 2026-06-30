@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
+import Image from "next/image";
 import { CheckCircle2, ArrowRight, Users, Zap, Shield, Star } from "lucide-react";
 
 const INDUSTRIES = [
@@ -54,6 +55,7 @@ export default function BetaPage() {
   }
 
   const inputClass = "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-text-primary placeholder-text-muted/40 text-sm focus:outline-none focus:border-accent-blue/50 focus:ring-1 focus:ring-accent-blue/25 transition-all duration-200";
+  const selectClass = inputClass + " [color-scheme:dark]";
 
   return (
     <section className="relative min-h-screen overflow-hidden">
@@ -70,7 +72,12 @@ export default function BetaPage() {
         />
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-6 pt-48 pb-24">
+      <div className="relative z-10 max-w-6xl mx-auto px-6 pt-40 pb-24">
+        {/* Hero logo */}
+        <div className="flex justify-center mb-14">
+          <Image src="/logo.png" alt="Axiploy" width={480} height={130} className="h-32 w-auto object-contain" priority />
+        </div>
+
         {submitted ? (
           <div className="max-w-lg mx-auto text-center py-20">
             <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-6">
@@ -148,7 +155,7 @@ export default function BetaPage() {
                 </div>
                 <div>
                   <label className="text-text-muted text-xs mb-1.5 block">Industry</label>
-                  <select name="industry" required defaultValue="" className={inputClass}>
+                  <select name="industry" required defaultValue="" className={selectClass}>
                     <option value="" disabled>Select your industry</option>
                     {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
                   </select>
