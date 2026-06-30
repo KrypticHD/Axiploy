@@ -4,17 +4,19 @@ import { supabaseAdmin } from "@/lib/supabase";
 
 async function buildClientContext(clientId: string, clientName: string): Promise<string> {
   const supabase = supabaseAdmin();
-  const [deRes, onboardingRes, approvalsRes, activityRes] = await Promise.all([
+  const [deRes, onboardingRes, approvalsRes, activityRes, kbRes] = await Promise.all([
     supabase.from("digital_employees").select("name, status, tasks_completed, hours_saved, success_rate").eq("client_id", clientId),
     supabase.from("onboarding").select("employee_name, status, risk_level, missing_documents, start_date").eq("client_id", clientId).limit(20),
     supabase.from("approvals").select("action_type, related_person, digital_employee, created_at").eq("client_id", clientId).eq("status", "pending"),
     supabase.from("activity_log").select("digital_employee, action, details, status, created_at").eq("client_id", clientId).order("created_at", { ascending: false }).limit(10),
+    supabase.from("knowledge_documents").select("name, category, content").eq("client_id", clientId).not("content", "is", null).order("created_at", { ascending: false }).limit(10),
   ]);
 
   const des = deRes.data || [];
   const onboardings = onboardingRes.data || [];
   const approvals = approvalsRes.data || [];
   const activity = activityRes.data || [];
+  const knowledgeDocs = kbRes.data || [];
 
   const highRisk = onboardings.filter((e) => ["High", "Critical"].includes(e.risk_level || ""));
   const active = onboardings.filter((e) => !["Complete", "Cancelled"].includes(e.status || ""));
@@ -36,6 +38,9 @@ ${approvals.length === 0 ? "None" : approvals.map((a) => `- ${a.digital_employee
 
 ## Recent Activity (last 10)
 ${activity.length === 0 ? "No recent activity" : activity.map((a) => `- [${a.status}] ${a.digital_employee}: ${a.action}${a.details ? ` — ${a.details}` : ""}`).join("\n")}
+
+## Company Knowledge Base (${knowledgeDocs.length} documents)
+${knowledgeDocs.length === 0 ? "No documents uploaded yet." : knowledgeDocs.map((d) => `### ${d.name} (${d.category})\n${d.content?.slice(0, 2000) ?? ""}`).join("\n\n")}
 `.trim();
 }
 

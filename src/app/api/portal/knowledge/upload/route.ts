@@ -64,6 +64,47 @@ export async function POST(req: NextRequest) {
 
   if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
 
+  // Extract text content for Ask Axiploy (PDFs and images only)
+  if (process.env.ANTHROPIC_API_KEY && doc && ["PDF", "PNG", "JPG"].includes(fileType)) {
+    try {
+      const { default: Anthropic } = await import("@anthropic-ai/sdk");
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const base64 = Buffer.from(arrayBuffer).toString("base64");
+      const prompt = "Extract all readable text from this document. Return only the text content, no commentary.";
+
+      let extractedContent: string | null = null;
+
+      if (fileType === "PDF") {
+        const res = await anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 4096,
+          messages: [{ role: "user", content: [
+            { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } } as never,
+            { type: "text", text: prompt },
+          ]}],
+        });
+        extractedContent = res.content[0].type === "text" ? res.content[0].text.trim() : null;
+      } else {
+        const imgType = file.type as "image/png" | "image/jpeg";
+        const res = await anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 4096,
+          messages: [{ role: "user", content: [
+            { type: "image", source: { type: "base64", media_type: imgType, data: base64 } },
+            { type: "text", text: prompt },
+          ]}],
+        });
+        extractedContent = res.content[0].type === "text" ? res.content[0].text.trim() : null;
+      }
+
+      if (extractedContent) {
+        await supabaseAdmin().from("knowledge_documents").update({ content: extractedContent }).eq("id", doc.id);
+      }
+    } catch {
+      // Extraction failure is non-fatal — document still uploaded successfully
+    }
+  }
+
   // Log to activity
   await supabaseAdmin().from("activity_log").insert({
     client_id: session.clientId,
