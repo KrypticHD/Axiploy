@@ -12,6 +12,7 @@ interface BriefingData {
   approvals: number;
   activity: { digital_employee: string; action: string; status: string }[];
   onboarding: number;
+  emails?: { unread: number; preview: string[] };
 }
 
 const PRIORITY_STYLE: Record<string, string> = {
@@ -67,12 +68,13 @@ export default function AdminBriefingPage() {
       )}
 
       {/* Quick stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid grid-cols-2 gap-4 ${data.emails ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
         {[
           { label: "Pending Tasks", value: data.tasks.total, sub: data.tasks.overdue > 0 ? `${data.tasks.overdue} overdue` : "All on track", subColor: data.tasks.overdue > 0 ? "text-red-400" : "text-emerald-400", href: "/portal/admin-assist/tasks", icon: ListTodo },
           { label: "Today's Meetings", value: data.meetings.length, sub: data.meetings.length === 0 ? "Clear schedule" : `Next: ${data.meetings[0] ? new Date(data.meetings[0].start_time).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" }) : ""}`, subColor: "text-text-muted", href: "/portal/admin-assist/meetings", icon: Calendar },
           { label: "Pending Approvals", value: data.approvals, sub: data.approvals === 0 ? "Nothing waiting" : "Needs attention", subColor: data.approvals > 0 ? "text-amber-400" : "text-text-muted", href: "/portal/approvals", icon: CheckCircle2 },
           { label: "Active Onboardings", value: data.onboarding, sub: "Employees in progress", subColor: "text-text-muted", href: "/portal/onboarding", icon: AlertTriangle },
+          ...(data.emails ? [{ label: "Unread Emails", value: data.emails.unread, sub: data.emails.unread === 0 ? "Inbox clear" : "In Outlook inbox", subColor: data.emails.unread > 0 ? "text-amber-400" : "text-emerald-400", href: "/portal/admin-assist/inbox", icon: Inbox }] : []),
         ].map((s) => (
           <Link key={s.label} href={s.href} className="glass rounded-2xl p-5 border border-white/[0.06] hover:border-accent-blue/20 transition-colors group">
             <div className="flex items-center gap-2 mb-2">
