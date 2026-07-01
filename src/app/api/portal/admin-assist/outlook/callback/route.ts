@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
 
   const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
 
-  await supabaseAdmin()
+  const { error: dbError } = await supabaseAdmin()
     .from("admin_outlook_connections")
     .upsert({
       client_id: clientId,
@@ -50,6 +50,11 @@ export async function GET(req: NextRequest) {
       refresh_token: tokens.refresh_token || null,
       expires_at: expiresAt,
     }, { onConflict: "client_id" });
+
+  if (dbError) {
+    console.error("Outlook connection save failed:", dbError.message);
+    return NextResponse.redirect(`${appUrl}/portal/admin-assist/emails?outlook_error=db`);
+  }
 
   return NextResponse.redirect(`${appUrl}/portal/admin-assist/emails?outlook_connected=true`);
 }
