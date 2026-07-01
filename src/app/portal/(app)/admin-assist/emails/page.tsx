@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, Copy, Check, Trash2, Loader2, Mail, Send, Link } from "lucide-react";
+import { Sparkles, Copy, Check, Trash2, Loader2, Mail, Send, Link, Pencil, X } from "lucide-react";
 
 interface EmailDraft {
   id: string;
@@ -43,7 +43,9 @@ export default function EmailsPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [outlookConnected, setOutlookConnected] = useState(false);
   const [outlookEmail, setOutlookEmail] = useState<string | null>(null);
-  const [form, setForm] = useState({ emailType: "follow_up", toRecipients: "", context: "", tone: "Professional" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<{ subject: string; body: string }>({ subject: "", body: "" });
+  const [form, setForm] = useState({ emailType: "follow_up", recipientName: "", toRecipients: "", context: "", tone: "Professional" });
 
   useEffect(() => {
     Promise.all([
@@ -57,12 +59,9 @@ export default function EmailsPage() {
       }
     }).finally(() => setLoading(false));
 
-    // Handle redirect from OAuth
     const params = new URLSearchParams(window.location.search);
-    if (params.get("outlook_connected") === "true") {
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-    if (params.get("outlook_error") === "true") {
+    if (params.get("outlook_connected") === "true") window.history.replaceState({}, "", window.location.pathname);
+    if (params.get("outlook_error")) {
       window.history.replaceState({}, "", window.location.pathname);
       alert("Failed to connect Outlook. Please try again.");
     }
@@ -79,12 +78,33 @@ export default function EmailsPage() {
     setGenerating(false);
     if (data.draft) {
       setDrafts((prev) => [data.draft, ...prev]);
-      setForm((f) => ({ ...f, context: "", toRecipients: "" }));
+      setForm((f) => ({ ...f, context: "", toRecipients: "", recipientName: "" }));
     }
   }
 
+  function startEdit(draft: EmailDraft) {
+    setEditingId(draft.id);
+    setEditValues({ subject: draft.subject, body: draft.body });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditValues({ subject: "", body: "" });
+  }
+
+  async function saveEdit(id: string) {
+    await fetch("/api/portal/admin-assist/emails", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, subject: editValues.subject, body: editValues.body }),
+    });
+    setDrafts((prev) => prev.map((d) => d.id === id ? { ...d, subject: editValues.subject, body: editValues.body } : d));
+    cancelEdit();
+  }
+
   async function handleCopy(draft: EmailDraft) {
-    const text = `To: ${draft.to_recipients || ""}\nSubject: ${draft.subject}\n\n${draft.body}`;
+    const d = editingId === draft.id ? { ...draft, subject: editValues.subject, body: editValues.body } : draft;
+    const text = `To: ${d.to_recipients || ""}\nSubject: ${d.subject}\n\n${d.body}`;
     await navigator.clipboard.writeText(text);
     setCopied(draft.id);
     setTimeout(() => setCopied(null), 2000);
@@ -97,6 +117,8 @@ export default function EmailsPage() {
   }
 
   async function handleSendViaOutlook(draft: EmailDraft) {
+    const subject = editingId === draft.id ? editValues.subject : draft.subject;
+    const body = editingId === draft.id ? editValues.body : draft.body;
     if (!draft.to_recipients?.trim()) {
       alert("Please add a recipient (To field) before sending.");
       return;
@@ -105,16 +127,12 @@ export default function EmailsPage() {
     const res = await fetch("/api/portal/admin-assist/outlook/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        draftId: draft.id,
-        to: draft.to_recipients,
-        subject: draft.subject,
-        body: draft.body,
-      }),
+      body: JSON.stringify({ draftId: draft.id, to: draft.to_recipients, subject, body }),
     });
     setSending(null);
     if (res.ok) {
       setDrafts((prev) => prev.map((d) => d.id === draft.id ? { ...d, status: "sent" } : d));
+      cancelEdit();
     } else {
       const err = await res.json();
       alert(`Send failed: ${err.error}`);
@@ -177,11 +195,19 @@ export default function EmailsPage() {
             </select>
           </div>
         </div>
-        <div>
-          <label className="text-text-muted text-xs mb-1 block">To (required to send via Outlook)</label>
-          <input value={form.toRecipients} onChange={(e) => setForm((f) => ({ ...f, toRecipients: e.target.value }))}
-            placeholder="recipient@example.com"
-            className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-text-muted text-xs mb-1 block">Recipient name</label>
+            <input value={form.recipientName} onChange={(e) => setForm((f) => ({ ...f, recipientName: e.target.value }))}
+              placeholder="e.g. John Smith"
+              className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+          </div>
+          <div>
+            <label className="text-text-muted text-xs mb-1 block">To email {outlookConnected && <span className="text-text-muted/50">(required to send)</span>}</label>
+            <input value={form.toRecipients} onChange={(e) => setForm((f) => ({ ...f, toRecipients: e.target.value }))}
+              placeholder="recipient@example.com"
+              className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+          </div>
         </div>
         <div>
           <label className="text-text-muted text-xs mb-1 block">Context</label>
@@ -208,47 +234,81 @@ export default function EmailsPage() {
       ) : (
         <div className="space-y-4">
           <p className="text-text-muted text-xs font-semibold uppercase tracking-wider">Generated Drafts</p>
-          {drafts.map((draft) => (
-            <div key={draft.id} className="glass rounded-2xl border border-white/[0.06]">
-              <div className="flex items-start justify-between p-4 pb-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-text-muted/60 capitalize">
-                      {EMAIL_TYPES.find((t) => t.value === draft.email_type)?.label || draft.email_type}
-                    </span>
-                    {draft.status === "sent" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">Sent</span>}
-                    <span className="text-text-muted/40 text-[10px]">{timeAgo(draft.created_at)}</span>
+          {drafts.map((draft) => {
+            const isEditing = editingId === draft.id;
+            return (
+              <div key={draft.id} className="glass rounded-2xl border border-white/[0.06]">
+                <div className="flex items-start justify-between p-4 pb-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-text-muted/60 capitalize">
+                        {EMAIL_TYPES.find((t) => t.value === draft.email_type)?.label || draft.email_type}
+                      </span>
+                      {draft.status === "sent" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">Sent</span>}
+                      {isEditing && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Editing</span>}
+                      <span className="text-text-muted/40 text-[10px]">{timeAgo(draft.created_at)}</span>
+                    </div>
+                    {draft.to_recipients && <p className="text-text-muted text-xs mb-1">To: {draft.to_recipients}</p>}
+                    {/* Subject — editable */}
+                    {isEditing ? (
+                      <input value={editValues.subject} onChange={(e) => setEditValues((v) => ({ ...v, subject: e.target.value }))}
+                        className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-accent-blue/30 rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/60 font-medium" />
+                    ) : (
+                      <p className="text-text-primary text-sm font-medium">{draft.subject}</p>
+                    )}
                   </div>
-                  {draft.to_recipients && <p className="text-text-muted text-xs mb-1">To: {draft.to_recipients}</p>}
-                  <p className="text-text-primary text-sm font-medium">{draft.subject}</p>
+                  <div className="flex items-center gap-1.5 flex-shrink-0 ml-4">
+                    {draft.status !== "sent" && !isEditing && (
+                      <button onClick={() => startEdit(draft)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg glass border border-white/[0.08] text-text-muted text-xs hover:text-text-primary transition-colors">
+                        <Pencil size={12} /> Edit
+                      </button>
+                    )}
+                    {isEditing && (
+                      <>
+                        <button onClick={() => saveEdit(draft.id)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors">
+                          <Check size={12} /> Save
+                        </button>
+                        <button onClick={cancelEdit}
+                          className="p-1.5 rounded-lg text-text-muted/40 hover:text-text-primary transition-colors">
+                          <X size={13} />
+                        </button>
+                      </>
+                    )}
+                    {outlookConnected && draft.status !== "sent" && (
+                      <button onClick={() => handleSendViaOutlook(draft)} disabled={sending === draft.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors">
+                        {sending === draft.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                        {sending === draft.id ? "Sending..." : "Send via Outlook"}
+                      </button>
+                    )}
+                    {draft.status !== "sent" && (
+                      <button onClick={() => handleCopy(draft)} disabled={actionLoading === draft.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors">
+                        {copied === draft.id ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+                      </button>
+                    )}
+                    <button onClick={() => handleDelete(draft.id)} disabled={actionLoading === draft.id}
+                      className="p-1.5 rounded-lg text-text-muted/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0 ml-4">
-                  {outlookConnected && draft.status !== "sent" && (
-                    <button onClick={() => handleSendViaOutlook(draft)} disabled={sending === draft.id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors">
-                      {sending === draft.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-                      {sending === draft.id ? "Sending..." : "Send via Outlook"}
-                    </button>
+                <div className="px-4 pb-4">
+                  {isEditing ? (
+                    <textarea value={editValues.body} onChange={(e) => setEditValues((v) => ({ ...v, body: e.target.value }))}
+                      rows={10}
+                      className="w-full px-3 py-2.5 text-sm bg-white/[0.04] border border-accent-blue/30 rounded-xl text-text-primary focus:outline-none focus:border-accent-blue/60 resize-none leading-relaxed" />
+                  ) : (
+                    <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                      <p className="text-text-muted text-sm leading-relaxed whitespace-pre-wrap">{draft.body}</p>
+                    </div>
                   )}
-                  {draft.status !== "sent" && (
-                    <button onClick={() => handleCopy(draft)} disabled={actionLoading === draft.id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors">
-                      {copied === draft.id ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
-                    </button>
-                  )}
-                  <button onClick={() => handleDelete(draft.id)} disabled={actionLoading === draft.id}
-                    className="p-1.5 rounded-lg text-text-muted/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
-                    <Trash2 size={13} />
-                  </button>
                 </div>
               </div>
-              <div className="px-4 pb-4">
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                  <p className="text-text-muted text-sm leading-relaxed whitespace-pre-wrap">{draft.body}</p>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

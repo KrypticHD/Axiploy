@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const session = getSession(req);
   if (!session?.clientId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-  const { emailType, toRecipients, context, tone } = await req.json();
+  const { emailType, toRecipients, recipientName, context, tone } = await req.json();
   if (!emailType) return NextResponse.json({ error: "emailType required" }, { status: 400 });
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -53,7 +53,8 @@ export async function POST(req: NextRequest) {
   };
 
   const prompt = `Write ${typeDescriptions[emailType] || "a professional email"} for ${companyName}.
-${toRecipients ? `To: ${toRecipients}` : ""}
+${recipientName ? `Recipient name: ${recipientName} (address them by name, e.g. "Hi ${recipientName}" or "Dear ${recipientName}")` : ""}
+${toRecipients ? `To email: ${toRecipients}` : ""}
 ${context ? `Context: ${context}` : ""}
 Tone: ${tone || agentConfig.emailTone || "Professional"}
 ${signature ? `Signature to use: ${signature}` : ""}
