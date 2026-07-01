@@ -58,27 +58,64 @@ export default async function DashboardPage() {
     }
 
     if (deRes.data && deRes.data.length > 0) {
-      digitalEmployees = deRes.data.map((de) => ({
-        id: de.id, clientId: clientId, name: de.name, type: "onboarding" as const,
-        status: (de.status === "Error" ? "Paused" : de.status) as "Active" | "Paused" | "Setup",
-        stats: [
-          { label: "Tasks", value: String(de.tasks_completed) },
-          { label: "Hours Saved", value: `${de.hours_saved}h` },
-          { label: "Success Rate", value: `${de.success_rate}%` },
-        ],
-      }));
-    } else if (onboardingRes.data && onboardingRes.data.length > 0) {
-      const total = onboardingRes.data.length;
-      const complete = onboardingRes.data.filter((r) => r.status === "Complete").length;
-      digitalEmployees = [{
-        id: "onboarding-assistant", clientId, name: "AI Onboarding Assistant", type: "onboarding" as const,
-        status: "Active" as const,
-        stats: [
-          { label: "Employees Managed", value: String(total) },
-          { label: "Hours Saved", value: `${total * 4}h` },
-          { label: "Completion Rate", value: total > 0 ? `${Math.round((complete / total) * 100)}%` : "—" },
-        ],
-      }];
+      // Compute real stats for each agent type from source tables
+      const [onboardingAll, emailDrafts, socialPosts] = await Promise.all([
+        supabase.from("onboarding").select("id, status").eq("client_id", clientId),
+        supabase.from("admin_email_drafts").select("id, status").eq("client_id", clientId),
+        supabase.from("social_posts").select("id, status").eq("client_id", clientId),
+      ]);
+
+      const ob = onboardingAll.data || [];
+      const obTotal = ob.length;
+      const obComplete = ob.filter((r) => r.status === "Complete").length;
+
+      const ed = emailDrafts.data || [];
+      const edSent = ed.filter((r) => r.status === "sent").length;
+
+      const sp = socialPosts.data || [];
+      const spApproved = sp.filter((r) => r.status === "approved" || r.status === "published").length;
+
+      const statsForType = (type: string): { tasks: number; hours: number; rate: number; label: string } => {
+        if (type === "onboarding") {
+          const tasks = obTotal;
+          const hours = obComplete * 4; // 4h saved per completed onboarding
+          const rate = obTotal > 0 ? Math.round((obComplete / obTotal) * 100) : 100;
+          return { tasks, hours, rate, label: "Employees Managed" };
+        }
+        if (type === "admin") {
+          const tasks = ed.length;
+          const hours = Math.round(tasks * 0.25); // 15 min per drafted email
+          const rate = tasks > 0 ? Math.round((edSent / tasks) * 100) : 100;
+          return { tasks, hours, rate, label: "Emails Drafted" };
+        }
+        if (type === "social") {
+          const tasks = sp.length;
+          const hours = Math.round(spApproved * 0.5); // 30 min per approved post
+          const rate = tasks > 0 ? Math.round((spApproved / tasks) * 100) : 100;
+          return { tasks, hours, rate, label: "Posts Generated" };
+        }
+        return { tasks: 0, hours: 0, rate: 100, label: "Tasks" };
+      };
+
+      digitalEmployees = deRes.data.map((de) => {
+        const computed = statsForType(de.type);
+        // Write computed stats back to DB (fire-and-forget)
+        supabase.from("digital_employees").update({
+          tasks_completed: computed.tasks,
+          hours_saved: computed.hours,
+          success_rate: computed.rate,
+        }).eq("id", de.id).then(() => {});
+
+        return {
+          id: de.id, clientId: clientId, name: de.name, type: de.type,
+          status: (de.status === "Error" ? "Paused" : de.status) as "Active" | "Paused" | "Setup",
+          stats: [
+            { label: computed.label, value: String(computed.tasks) },
+            { label: "Hours Saved", value: `${computed.hours}h` },
+            { label: "Success Rate", value: `${computed.rate}%` },
+          ],
+        };
+      });
     }
   }
 
