@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, Copy, Check, Trash2, Loader2, ChevronDown, Mail, ExternalLink } from "lucide-react";
+import { Sparkles, Copy, Check, Trash2, Loader2, Mail, Send, Link } from "lucide-react";
 
 interface EmailDraft {
   id: string;
@@ -39,14 +39,33 @@ export default function EmailsPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [sending, setSending] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [outlookConnected, setOutlookConnected] = useState(false);
+  const [outlookEmail, setOutlookEmail] = useState<string | null>(null);
   const [form, setForm] = useState({ emailType: "follow_up", toRecipients: "", context: "", tone: "Professional" });
 
   useEffect(() => {
-    fetch("/api/portal/admin-assist/emails")
-      .then((r) => r.json())
-      .then((d) => setDrafts(d.drafts || []))
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch("/api/portal/admin-assist/emails").then((r) => r.json()),
+      fetch("/api/portal/admin-assist/outlook/status").then((r) => r.json()),
+    ]).then(([emailData, outlookData]) => {
+      setDrafts(emailData.drafts || []);
+      if (outlookData.connected) {
+        setOutlookConnected(true);
+        setOutlookEmail(outlookData.email);
+      }
+    }).finally(() => setLoading(false));
+
+    // Handle redirect from OAuth
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("outlook_connected") === "true") {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    if (params.get("outlook_error") === "true") {
+      window.history.replaceState({}, "", window.location.pathname);
+      alert("Failed to connect Outlook. Please try again.");
+    }
   }, []);
 
   async function handleGenerate() {
@@ -69,13 +88,37 @@ export default function EmailsPage() {
     await navigator.clipboard.writeText(text);
     setCopied(draft.id);
     setTimeout(() => setCopied(null), 2000);
-    // Mark as sent
     await fetch("/api/portal/admin-assist/emails", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: draft.id, status: "sent" }),
     });
     setDrafts((prev) => prev.map((d) => d.id === draft.id ? { ...d, status: "sent" } : d));
+  }
+
+  async function handleSendViaOutlook(draft: EmailDraft) {
+    if (!draft.to_recipients?.trim()) {
+      alert("Please add a recipient (To field) before sending.");
+      return;
+    }
+    setSending(draft.id);
+    const res = await fetch("/api/portal/admin-assist/outlook/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        draftId: draft.id,
+        to: draft.to_recipients,
+        subject: draft.subject,
+        body: draft.body,
+      }),
+    });
+    setSending(null);
+    if (res.ok) {
+      setDrafts((prev) => prev.map((d) => d.id === draft.id ? { ...d, status: "sent" } : d));
+    } else {
+      const err = await res.json();
+      alert(`Send failed: ${err.error}`);
+    }
   }
 
   async function handleDelete(id: string) {
@@ -94,12 +137,23 @@ export default function EmailsPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="font-heading text-2xl font-semibold text-text-primary">Email Drafts</h1>
-          <p className="text-text-muted text-sm mt-1">AI drafts your emails. You review, copy, and send from Outlook.</p>
+          <p className="text-text-muted text-sm mt-1">
+            {outlookConnected
+              ? `Connected to ${outlookEmail} — send directly from Axiploy`
+              : "AI drafts your emails. Connect Outlook to send directly."}
+          </p>
         </div>
-        {/* Outlook connect — Phase 2 */}
-        <button disabled className="flex items-center gap-1.5 px-4 py-2 rounded-xl glass border border-white/[0.08] text-text-muted/40 text-sm cursor-not-allowed">
-          <ExternalLink size={14} /> Connect Outlook
-        </button>
+        {outlookConnected ? (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl glass border border-emerald-500/20 bg-emerald-500/5">
+            <div className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="text-emerald-400 text-xs font-medium">Outlook Connected</span>
+          </div>
+        ) : (
+          <a href="/api/portal/admin-assist/outlook/connect"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm font-medium hover:bg-accent-blue/20 transition-colors">
+            <Link size={14} /> Connect Outlook
+          </a>
+        )}
       </div>
 
       {/* Generator */}
@@ -124,9 +178,9 @@ export default function EmailsPage() {
           </div>
         </div>
         <div>
-          <label className="text-text-muted text-xs mb-1 block">To (optional)</label>
+          <label className="text-text-muted text-xs mb-1 block">To (required to send via Outlook)</label>
           <input value={form.toRecipients} onChange={(e) => setForm((f) => ({ ...f, toRecipients: e.target.value }))}
-            placeholder="Recipient name or email..."
+            placeholder="recipient@example.com"
             className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
         </div>
         <div>
@@ -162,17 +216,26 @@ export default function EmailsPage() {
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-text-muted/60 capitalize">
                       {EMAIL_TYPES.find((t) => t.value === draft.email_type)?.label || draft.email_type}
                     </span>
-                    {draft.status === "sent" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">Copied & sent</span>}
+                    {draft.status === "sent" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">Sent</span>}
                     <span className="text-text-muted/40 text-[10px]">{timeAgo(draft.created_at)}</span>
                   </div>
                   {draft.to_recipients && <p className="text-text-muted text-xs mb-1">To: {draft.to_recipients}</p>}
                   <p className="text-text-primary text-sm font-medium">{draft.subject}</p>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0 ml-4">
-                  <button onClick={() => handleCopy(draft)} disabled={actionLoading === draft.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors">
-                    {copied === draft.id ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy to Clipboard</>}
-                  </button>
+                  {outlookConnected && draft.status !== "sent" && (
+                    <button onClick={() => handleSendViaOutlook(draft)} disabled={sending === draft.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors">
+                      {sending === draft.id ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                      {sending === draft.id ? "Sending..." : "Send via Outlook"}
+                    </button>
+                  )}
+                  {draft.status !== "sent" && (
+                    <button onClick={() => handleCopy(draft)} disabled={actionLoading === draft.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors">
+                      {copied === draft.id ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+                    </button>
+                  )}
                   <button onClick={() => handleDelete(draft.id)} disabled={actionLoading === draft.id}
                     className="p-1.5 rounded-lg text-text-muted/40 hover:text-red-400 hover:bg-red-500/10 transition-colors">
                     <Trash2 size={13} />
@@ -188,13 +251,6 @@ export default function EmailsPage() {
           ))}
         </div>
       )}
-
-      {/* Outlook connection note */}
-      <div className="glass rounded-xl p-4 border border-white/[0.06]">
-        <p className="text-text-muted text-xs text-center">
-          <span className="text-amber-400 font-medium">Phase 2:</span> Connect your Microsoft 365 account to send emails directly from Axiploy, triage your inbox, and get AI-prioritised email summaries.
-        </p>
-      </div>
     </div>
   );
 }

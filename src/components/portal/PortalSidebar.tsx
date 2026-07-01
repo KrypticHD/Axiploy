@@ -45,8 +45,9 @@ const adminNavItems = [
   { href: "/portal/admin-assist", label: "Daily Briefing", icon: LayoutGrid },
   { href: "/portal/admin-assist/tasks", label: "Tasks", icon: ListTodo },
   { href: "/portal/admin-assist/meetings", label: "Meetings", icon: Calendar },
-  { href: "/portal/admin-assist/emails", label: "Email Drafts", icon: Inbox },
-  { href: "/portal/admin-assist/reports", label: "Reports", icon: FileText },
+  { href: "/portal/admin-assist/inbox", label: "Inbox", icon: Inbox },
+  { href: "/portal/admin-assist/emails", label: "Email Drafts", icon: FileText },
+  { href: "/portal/admin-assist/reports", label: "Reports", icon: BarChart2 },
 ];
 
 const ADMIN_ASSIST_PATHS = ["/portal/admin-assist"];
