@@ -82,9 +82,13 @@ export default function InboxPage() {
   }
 
   async function loadFolders() {
-    const res = await fetch("/api/portal/admin-assist/outlook/folders");
-    const data = await res.json();
-    if (data.folders) setFolders(data.folders);
+    try {
+      const res = await fetch("/api/portal/admin-assist/outlook/folders");
+      const data = await res.json();
+      if (data.folders) setFolders(data.folders);
+    } catch {
+      // Folders API failed — well-known folders still shown from WELL_KNOWN constant
+    }
   }
 
   async function loadEmails(folderId: string, append = false) {
@@ -201,7 +205,7 @@ export default function InboxPage() {
         </div>
       </div>
 
-      <div className="flex gap-4 items-start">
+      <div className="flex gap-4 items-start min-h-[400px]">
         {/* Folder sidebar */}
         <div className="w-48 flex-shrink-0 glass rounded-2xl border border-white/[0.06] p-3 space-y-0.5">
           <p className="text-text-muted/50 text-[10px] font-semibold uppercase tracking-wider px-2 pb-1">Folders</p>
