@@ -117,6 +117,7 @@ export default function InboxPage() {
   const [replyText, setReplyText] = useState("");
   const [sending, setSending] = useState(false);
   const [sentId, setSentId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const replyRef = useRef<HTMLTextAreaElement>(null);
 
@@ -208,6 +209,16 @@ export default function InboxPage() {
     setReplyOpen(false);
     setReplyText("");
     setSentId(null);
+  }
+
+  async function deleteEmail(id: string) {
+    setDeletingId(id);
+    const res = await fetch(`/api/portal/admin-assist/outlook/message?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    setDeletingId(null);
+    if (res.ok) {
+      setEmails((prev) => prev.filter((e) => e.id !== id));
+      if (expanded === id) closeExpanded();
+    }
   }
 
   async function sendReply() {
@@ -389,7 +400,7 @@ export default function InboxPage() {
                   <div key={email.id}
                     className={`glass rounded-xl border transition-all ${email.priority === "urgent" ? "border-red-500/20" : email.priority === "important" ? "border-amber-500/20" : "border-white/[0.06]"} ${isOpen ? "bg-white/[0.03]" : "hover:bg-white/[0.02]"}`}>
                     {/* Email header row — click to expand */}
-                    <div className="p-4 cursor-pointer" onClick={() => openEmail(email)}>
+                    <div className="p-4 cursor-pointer group/row" onClick={() => openEmail(email)}>
                       <div className="flex items-start gap-3">
                         <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${cfg.dot}`} />
                         <div className="flex-1 min-w-0">
@@ -405,12 +416,21 @@ export default function InboxPage() {
                             <p className="text-text-muted/40 text-xs flex-shrink-0">{timeAgo(email.receivedAt)}</p>
                           </div>
                         </div>
-                        {isOpen && (
-                          <button onClick={(e) => { e.stopPropagation(); closeExpanded(); }}
-                            className="text-text-muted/40 hover:text-text-muted transition-colors flex-shrink-0">
-                            <X size={14} />
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteEmail(email.id); }}
+                            disabled={deletingId === email.id}
+                            title="Delete"
+                            className={`p-1.5 rounded-lg transition-colors ${isOpen ? "text-text-muted/40 hover:text-red-400 hover:bg-red-500/10" : "opacity-0 group-hover/row:opacity-100 text-text-muted/40 hover:text-red-400 hover:bg-red-500/10"} disabled:opacity-30`}>
+                            {deletingId === email.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                           </button>
-                        )}
+                          {isOpen && (
+                            <button onClick={(e) => { e.stopPropagation(); closeExpanded(); }}
+                              className="p-1.5 rounded-lg text-text-muted/40 hover:text-text-muted hover:bg-white/[0.04] transition-colors">
+                              <X size={13} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
 

@@ -79,6 +79,32 @@ export async function GET(req: NextRequest) {
   });
 }
 
+// DELETE move email to Deleted Items
+export async function DELETE(req: NextRequest) {
+  const session = getSession(req);
+  if (!session?.clientId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const messageId = searchParams.get("id");
+  if (!messageId) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+
+  const token = await getToken(session.clientId);
+  if (!token) return NextResponse.json({ error: "Outlook not connected" }, { status: 400 });
+
+  const res = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${messageId}/move`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ destinationId: "deleteditems" }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    return NextResponse.json({ error: err }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true });
+}
+
 // POST reply to email
 export async function POST(req: NextRequest) {
   const session = getSession(req);
