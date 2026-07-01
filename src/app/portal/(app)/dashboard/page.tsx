@@ -99,6 +99,9 @@ export default async function DashboardPage() {
 
       digitalEmployees = deRes.data.map((de) => {
         const computed = statsForType(de.type);
+        const daysActive = Math.max(1, Math.floor((Date.now() - new Date(de.created_at).getTime()) / 86400000));
+        const isNew = computed.tasks === 0;
+
         // Write computed stats back to DB (fire-and-forget)
         supabase.from("digital_employees").update({
           tasks_completed: computed.tasks,
@@ -108,12 +111,19 @@ export default async function DashboardPage() {
 
         return {
           id: de.id, clientId: clientId, name: de.name, type: de.type,
+          daysActive, isNew,
           status: (de.status === "Error" ? "Paused" : de.status) as "Active" | "Paused" | "Setup",
-          stats: [
-            { label: computed.label, value: String(computed.tasks) },
-            { label: "Hours Saved", value: `${computed.hours}h` },
-            { label: "Success Rate", value: `${computed.rate}%` },
-          ],
+          stats: isNew
+            ? [
+                { label: "Status", value: "Active" },
+                { label: "Days Running", value: String(daysActive) },
+                { label: "Ready to work", value: "✓" },
+              ]
+            : [
+                { label: computed.label, value: String(computed.tasks) },
+                { label: "Hours Saved", value: `${computed.hours}h` },
+                { label: "Success Rate", value: `${computed.rate}%` },
+              ],
         };
       });
     }
@@ -172,7 +182,7 @@ export default async function DashboardPage() {
                 const Icon = deIcons[typeKey] || Bot;
                 const href = deLinks[typeKey] || "/portal/workforce";
                 return (
-                  <div key={de.id} className="glass rounded-2xl p-5 border border-white/[0.08] hover:border-accent-blue/20 transition-colors">
+                  <div key={de.id} className={`glass rounded-2xl p-5 border transition-colors ${(de as { isNew?: boolean }).isNew ? "border-accent-blue/15 hover:border-accent-blue/30" : "border-white/[0.08] hover:border-accent-blue/20"}`}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-blue/20 to-accent-cyan/10 flex items-center justify-center">
@@ -182,6 +192,11 @@ export default async function DashboardPage() {
                       </div>
                       <StatusPill status={de.status} />
                     </div>
+                    {(de as { isNew?: boolean }).isNew && (
+                      <div className="mb-3 px-3 py-2 rounded-xl bg-accent-blue/5 border border-accent-blue/15 text-xs text-accent-blue/80">
+                        Your agent is active and monitoring — stats will build as it works.
+                      </div>
+                    )}
                     <div className="grid grid-cols-3 gap-3">
                       {de.stats.map((s) => (
                         <div key={s.label} className="bg-white/[0.03] rounded-xl p-3 text-center">

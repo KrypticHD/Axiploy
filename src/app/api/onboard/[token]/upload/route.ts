@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { sendEmail, emailWrapper } from "@/lib/email";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/heic", "image/webp"];
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   // Validate token
   const { data: onboarding, error } = await supabaseAdmin()
     .from("onboarding")
-    .select("id, client_id, employee_name, documents_required")
+    .select("id, client_id, employee_name, role, manager, documents_required")
     .eq("token", token)
     .single();
 
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     status: "success",
   });
 
-  // If all complete — create approval request + log completion
+  // If all complete — create approval + notify manager
   if (allComplete) {
     await supabaseAdmin().from("approvals").insert({
       client_id: onboarding.client_id,
@@ -112,6 +113,49 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       details: "All required documents received. Awaiting manager review.",
       status: "success",
     });
+
+    // Email the manager — look up their email from users table
+    if (onboarding.manager) {
+      const { data: managerUser } = await supabaseAdmin()
+        .from("users")
+        .select("email")
+        .eq("client_id", onboarding.client_id)
+        .ilike("name", `%${onboarding.manager}%`)
+        .maybeSingle();
+
+      // Fall back to client_admin email if manager not found by name
+      const { data: adminUser } = !managerUser ? await supabaseAdmin()
+        .from("users")
+        .select("email")
+        .eq("client_id", onboarding.client_id)
+        .eq("role", "client_admin")
+        .maybeSingle() : { data: null };
+
+      const managerEmail = managerUser?.email || adminUser?.email;
+
+      if (managerEmail) {
+        const portalLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://axiploy.vercel.app"}/portal/onboarding`;
+        sendEmail({
+          to: managerEmail,
+          subject: `✅ ${onboarding.employee_name} has submitted all onboarding documents`,
+          html: emailWrapper(`
+            <div class="card">
+              <div class="heading">Onboarding complete ✅</div>
+              <div class="sub">${onboarding.employee_name} has uploaded all required documents.</div>
+              <div class="section-title">📋 Summary</div>
+              <div class="item"><div class="dot dot-green"></div><div>Employee: <strong style="color:#fff">${onboarding.employee_name}</strong></div></div>
+              <div class="item"><div class="dot dot-green"></div><div>Role: ${onboarding.role || "—"}</div></div>
+              <div class="item"><div class="dot dot-green"></div><div>${required.length} of ${required.length} documents received</div></div>
+              <p>Please log in to review their documents and approve the onboarding.</p>
+              <a href="${portalLink}" class="btn">Review & Approve →</a>
+            </div>
+            <p style="text-align:center;font-size:12px;color:#475569;margin-top:8px;">
+              Sent by the AI Onboarding Assistant.
+            </p>
+          `),
+        }).catch(() => {});
+      }
+    }
   }
 
   return NextResponse.json({ success: true, fileUrl: publicUrl, progress, missingDocuments, allComplete });
