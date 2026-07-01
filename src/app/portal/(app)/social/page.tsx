@@ -64,7 +64,8 @@ export default function PostStudioPage() {
     const res = await fetch(`/api/portal/social/assets${param}`);
     const data = await res.json();
     setAssets(data.assets || []);
-    setFolders(data.folders || []);
+    // Merge API folders with any locally-created empty folders so they survive re-fetches
+    setFolders((prev) => [...new Set([...prev, ...(data.folders || [])])].sort());
     setLoadingAssets(false);
   }
 
