@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Upload, Sparkles, Check, X, Trash2, Image as ImageIcon, Loader2, ChevronRight } from "lucide-react";
+import { Upload, Sparkles, Check, X, Trash2, Image as ImageIcon, Loader2, ChevronRight, FolderPlus, Folder, FolderOpen, Images, FolderInput } from "lucide-react";
 import Link from "next/link";
 
 interface SocialAsset {
@@ -9,6 +9,7 @@ interface SocialAsset {
   name: string;
   file_url: string;
   file_size_kb: number;
+  folder: string | null;
   created_at: string;
 }
 
@@ -30,7 +31,12 @@ const PLATFORM_META = {
 
 export default function PostStudioPage() {
   const [assets, setAssets] = useState<SocialAsset[]>([]);
+  const [folders, setFolders] = useState<string[]>([]);
   const [loadingAssets, setLoadingAssets] = useState(true);
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null); // null = All, "" = Uncategorized
+  const [newFolderMode, setNewFolderMode] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [movingAsset, setMovingAsset] = useState<string | null>(null); // asset id being moved
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [context, setContext] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -42,24 +48,47 @@ export default function PostStudioPage() {
   const [generatedGroupId, setGeneratedGroupId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const draftsRef = useRef<HTMLDivElement>(null);
+  const newFolderRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/portal/social/assets")
-      .then((r) => r.json())
-      .then((d) => setAssets(d.assets || []))
-      .finally(() => setLoadingAssets(false));
+    loadAssets();
   }, []);
+
+  useEffect(() => {
+    if (newFolderMode) setTimeout(() => newFolderRef.current?.focus(), 50);
+  }, [newFolderMode]);
+
+  async function loadAssets(folder?: string | null) {
+    setLoadingAssets(true);
+    const param = folder === undefined ? "" : folder === null ? "" : folder === "" ? "?folder=" : `?folder=${encodeURIComponent(folder)}`;
+    const res = await fetch(`/api/portal/social/assets${param}`);
+    const data = await res.json();
+    setAssets(data.assets || []);
+    setFolders(data.folders || []);
+    setLoadingAssets(false);
+  }
+
+  // Reload when folder selection changes
+  useEffect(() => {
+    loadAssets(selectedFolder);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFolder]);
 
   async function handleUpload(file: File) {
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
+    if (selectedFolder) formData.append("folder", selectedFolder);
     const res = await fetch("/api/portal/social/assets/upload", { method: "POST", body: formData });
     const data = await res.json();
     setUploading(false);
     if (data.asset) {
       setAssets((prev) => [data.asset, ...prev]);
       setSelectedAssetId(data.asset.id);
+      // Add folder to list if new
+      if (data.asset.folder && !folders.includes(data.asset.folder)) {
+        setFolders((prev) => [...prev, data.asset.folder].sort());
+      }
     }
   }
 
@@ -74,13 +103,41 @@ export default function PostStudioPage() {
     if (selectedAssetId === asset.id) setSelectedAssetId(null);
   }
 
+  async function moveToFolder(assetId: string, folder: string | null) {
+    setMovingAsset(assetId);
+    await fetch("/api/portal/social/assets", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: assetId, folder }),
+    });
+    setMovingAsset(null);
+    // Remove from current filtered view if it no longer belongs
+    if (selectedFolder !== null) {
+      setAssets((prev) => prev.filter((a) => a.id !== assetId));
+    } else {
+      setAssets((prev) => prev.map((a) => a.id === assetId ? { ...a, folder } : a));
+    }
+    // Refresh folder list
+    const res = await fetch("/api/portal/social/assets");
+    const data = await res.json();
+    setFolders(data.folders || []);
+  }
+
+  function createFolder() {
+    const name = newFolderName.trim();
+    if (!name || folders.includes(name)) { setNewFolderMode(false); setNewFolderName(""); return; }
+    setFolders((prev) => [...prev, name].sort());
+    setSelectedFolder(name);
+    setNewFolderMode(false);
+    setNewFolderName("");
+  }
+
   async function handleGenerate() {
     const asset = assets.find((a) => a.id === selectedAssetId);
     if (!asset) return;
     setGenerating(true);
     setDrafts([]);
     setGeneratedGroupId(null);
-
     const res = await fetch("/api/portal/social/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -88,7 +145,6 @@ export default function PostStudioPage() {
     });
     const data = await res.json();
     setGenerating(false);
-
     if (data.posts) {
       setDrafts(data.posts);
       setGeneratedGroupId(data.posts[0]?.post_group_id || null);
@@ -109,15 +165,19 @@ export default function PostStudioPage() {
 
   async function handleSaveEdit(post: SocialPost) {
     setActionLoading(post.id);
-    // Update locally only — content editing not stored to DB in this phase
     setDrafts((prev) => prev.map((p) => p.id === post.id ? { ...p, content: editContent } : p));
     setEditingId(null);
     setActionLoading(null);
   }
 
   const selectedAsset = assets.find((a) => a.id === selectedAssetId);
-  const pendingDrafts = drafts.filter((d) => d.status === "draft");
   const approvedDrafts = drafts.filter((d) => d.status === "approved");
+
+  // Folder labels for the move popover
+  const folderOptions: { label: string; value: string | null }[] = [
+    { label: "Uncategorized", value: null },
+    ...folders.map((f) => ({ label: f, value: f })),
+  ];
 
   return (
     <div className="space-y-6">
@@ -141,10 +201,9 @@ export default function PostStudioPage() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors disabled:opacity-50"
-            >
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors disabled:opacity-50">
               {uploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
-              {uploading ? "Uploading..." : "Upload Photo"}
+              {uploading ? "Uploading..." : selectedFolder ? `Upload to ${selectedFolder}` : "Upload Photo"}
             </button>
             <input
               ref={fileInputRef}
@@ -155,50 +214,165 @@ export default function PostStudioPage() {
             />
           </div>
 
-          {loadingAssets ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 size={20} className="animate-spin text-text-muted/40" />
-            </div>
-          ) : assets.length === 0 ? (
-            <button onClick={() => fileInputRef.current?.click()}
-              className="w-full flex flex-col items-center justify-center gap-3 py-12 rounded-xl border border-dashed border-white/[0.10] hover:border-accent-blue/30 hover:bg-accent-blue/5 transition-colors text-text-muted/50 hover:text-text-muted">
-              <ImageIcon size={32} />
-              <div className="text-center">
-                <p className="text-sm font-medium">Upload your first photo</p>
-                <p className="text-xs mt-0.5">PNG, JPG or WEBP up to 10MB</p>
-              </div>
-            </button>
-          ) : (
-            <div className="grid grid-cols-3 gap-2">
-              {assets.map((asset) => (
+          <div className="flex gap-3">
+            {/* Folder sidebar */}
+            <div className="w-36 flex-shrink-0 space-y-0.5">
+              {/* All Photos */}
+              <button
+                onClick={() => setSelectedFolder(null)}
+                className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-colors text-left ${selectedFolder === null ? "bg-accent-blue/20 text-accent-blue" : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"}`}>
+                <Images size={11} className="flex-shrink-0" /> All Photos
+              </button>
+
+              {/* Uncategorized */}
+              <button
+                onClick={() => setSelectedFolder("")}
+                className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-colors text-left ${selectedFolder === "" ? "bg-accent-blue/20 text-accent-blue" : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"}`}>
+                <ImageIcon size={11} className="flex-shrink-0" /> Uncategorized
+              </button>
+
+              {/* Named folders */}
+              {folders.length > 0 && (
+                <div className="pt-1.5 pb-0.5">
+                  <p className="text-text-muted/40 text-[10px] font-semibold uppercase tracking-wider px-2 pb-1">Folders</p>
+                  {folders.map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setSelectedFolder(f)}
+                      className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs transition-colors text-left ${selectedFolder === f ? "bg-accent-blue/20 text-accent-blue" : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"}`}>
+                      {selectedFolder === f ? <FolderOpen size={11} className="flex-shrink-0" /> : <Folder size={11} className="flex-shrink-0" />}
+                      <span className="truncate">{f}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* New Folder */}
+              {newFolderMode ? (
+                <div className="pt-1">
+                  <input
+                    ref={newFolderRef}
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") createFolder(); if (e.key === "Escape") { setNewFolderMode(false); setNewFolderName(""); } }}
+                    onBlur={createFolder}
+                    placeholder="Folder name..."
+                    className="w-full px-2 py-1.5 rounded-lg bg-white/[0.06] border border-accent-blue/30 text-xs text-text-primary placeholder:text-text-muted/40 outline-none"
+                  />
+                </div>
+              ) : (
                 <button
-                  key={asset.id}
-                  onClick={() => setSelectedAssetId(asset.id === selectedAssetId ? null : asset.id)}
-                  className={`group relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
-                    selectedAssetId === asset.id
-                      ? "border-accent-blue shadow-[0_0_0_1px_rgba(59,130,246,0.3)]"
-                      : "border-white/[0.06] hover:border-white/[0.15]"
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={asset.file_url} alt={asset.name} className="w-full h-full object-cover" />
-                  {selectedAssetId === asset.id && (
-                    <div className="absolute inset-0 bg-accent-blue/20 flex items-center justify-center">
-                      <div className="w-6 h-6 rounded-full bg-accent-blue flex items-center justify-center">
-                        <Check size={12} className="text-white" />
-                      </div>
-                    </div>
-                  )}
-                  <button
-                    onClick={(e) => handleDeleteAsset(asset, e)}
-                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500/80"
-                  >
-                    <Trash2 size={10} className="text-white" />
-                  </button>
+                  onClick={() => setNewFolderMode(true)}
+                  className="w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs text-text-muted/50 hover:text-text-muted hover:bg-white/[0.04] transition-colors mt-1">
+                  <FolderPlus size={11} /> New Folder
                 </button>
-              ))}
+              )}
             </div>
-          )}
+
+            {/* Photo grid */}
+            <div className="flex-1 min-w-0">
+              {loadingAssets ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 size={20} className="animate-spin text-text-muted/40" />
+                </div>
+              ) : assets.length === 0 ? (
+                <button onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex flex-col items-center justify-center gap-3 py-10 rounded-xl border border-dashed border-white/[0.10] hover:border-accent-blue/30 hover:bg-accent-blue/5 transition-colors text-text-muted/50 hover:text-text-muted">
+                  <ImageIcon size={28} />
+                  <div className="text-center">
+                    <p className="text-xs font-medium">{selectedFolder ? `No photos in "${selectedFolder}"` : "Upload your first photo"}</p>
+                    <p className="text-[11px] mt-0.5">PNG, JPG or WEBP up to 10MB</p>
+                  </div>
+                </button>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {assets.map((asset) => (
+                    <div key={asset.id} className="relative group">
+                      <button
+                        onClick={() => setSelectedAssetId(asset.id === selectedAssetId ? null : asset.id)}
+                        className={`w-full aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                          selectedAssetId === asset.id
+                            ? "border-accent-blue shadow-[0_0_0_1px_rgba(59,130,246,0.3)]"
+                            : "border-white/[0.06] hover:border-white/[0.15]"
+                        }`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={asset.file_url} alt={asset.name} className="w-full h-full object-cover" />
+                        {selectedAssetId === asset.id && (
+                          <div className="absolute inset-0 bg-accent-blue/20 flex items-center justify-center rounded-xl">
+                            <div className="w-6 h-6 rounded-full bg-accent-blue flex items-center justify-center">
+                              <Check size={12} className="text-white" />
+                            </div>
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Hover actions */}
+                      <div className="absolute top-1 right-1 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {/* Move to folder */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setMovingAsset(movingAsset === asset.id ? null : asset.id)}
+                            title="Move to folder"
+                            className="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center hover:bg-accent-blue/80 transition-colors">
+                            {movingAsset === asset.id ? <Loader2 size={10} className="text-white animate-spin" /> : <FolderInput size={10} className="text-white" />}
+                          </button>
+                          {/* Folder picker popover */}
+                          {movingAsset === asset.id && (
+                            <div className="absolute right-0 top-7 z-20 w-36 rounded-xl glass border border-white/[0.12] shadow-xl p-1 space-y-0.5">
+                              {folderOptions.map((opt) => (
+                                <button
+                                  key={opt.value ?? "__none__"}
+                                  onClick={() => { moveToFolder(asset.id, opt.value); setMovingAsset(null); }}
+                                  className={`w-full text-left px-2 py-1.5 rounded-lg text-xs transition-colors flex items-center gap-1.5 ${asset.folder === opt.value ? "text-accent-blue bg-accent-blue/10" : "text-text-muted hover:text-text-primary hover:bg-white/[0.06]"}`}>
+                                  {opt.value ? <Folder size={10} /> : <ImageIcon size={10} />}
+                                  {opt.label}
+                                  {asset.folder === opt.value && <Check size={10} className="ml-auto" />}
+                                </button>
+                              ))}
+                              {/* Move to new folder inline */}
+                              <div className="border-t border-white/[0.06] pt-1 mt-1">
+                                <form onSubmit={(e) => {
+                                  e.preventDefault();
+                                  const input = (e.currentTarget.elements.namedItem("fn") as HTMLInputElement).value.trim();
+                                  if (!input) return;
+                                  if (!folders.includes(input)) setFolders((prev) => [...prev, input].sort());
+                                  moveToFolder(asset.id, input);
+                                  setMovingAsset(null);
+                                }}>
+                                  <input
+                                    name="fn"
+                                    autoFocus
+                                    placeholder="New folder..."
+                                    className="w-full px-2 py-1 rounded-lg bg-white/[0.06] text-xs text-text-primary placeholder:text-text-muted/40 outline-none border border-white/[0.08] focus:border-accent-blue/30"
+                                  />
+                                </form>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Delete */}
+                        <button
+                          onClick={(e) => handleDeleteAsset(asset, e)}
+                          title="Delete"
+                          className="w-6 h-6 rounded-full bg-black/70 flex items-center justify-center hover:bg-red-500/80 transition-colors">
+                          <Trash2 size={10} className="text-white" />
+                        </button>
+                      </div>
+
+                      {/* Folder badge */}
+                      {asset.folder && selectedFolder === null && (
+                        <div className="absolute bottom-1 left-1 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-black/60 text-[9px] text-white/70 max-w-[90%]">
+                          <Folder size={8} />
+                          <span className="truncate">{asset.folder}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
           {selectedAsset && (
             <div className="pt-2 border-t border-white/[0.06]">
@@ -213,8 +387,7 @@ export default function PostStudioPage() {
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-60"
-              >
+                className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-60">
                 {generating ? (
                   <><Loader2 size={14} className="animate-spin" /> Generating posts...</>
                 ) : (

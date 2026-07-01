@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
+  const folder = (formData.get("folder") as string | null) || null;
 
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ error: "File too large (max 10MB)" }, { status: 400 });
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
       file_url: urlData.publicUrl,
       file_size_kb: Math.round(file.size / 1024),
       uploaded_by: session.id,
+      folder: folder || null,
     })
     .select()
     .single();
