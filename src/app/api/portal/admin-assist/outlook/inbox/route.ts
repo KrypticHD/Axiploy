@@ -89,6 +89,13 @@ export async function GET(req: NextRequest) {
           role: "user",
           content: `Triage these emails for a business owner. For each email assign: priority (urgent/important/follow_up/fyi/junk), a short label (max 5 words), and a suggested action (max 8 words).
 
+Priority rules:
+- urgent: verification codes, OTP codes, security alerts, password resets, account access, anything time-sensitive
+- important: emails needing a reply, invoices, contracts, client emails, anything business-related
+- follow_up: newsletters you might act on, meeting follow-ups, quotes
+- fyi: receipts, notifications, confirmations that need no action
+- junk: marketing, promotions, ads, spam (NEVER put verification codes or security emails here)
+
 ${emailList}
 
 Respond ONLY with a JSON array matching the email order: [{"priority":"urgent","label":"Client needs response","action":"Reply within 2 hours"},...]`,
