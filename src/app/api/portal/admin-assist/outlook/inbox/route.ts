@@ -52,8 +52,9 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const skipToken = searchParams.get("skipToken");
+  const folderId = searchParams.get("folderId") || "inbox";
 
-  const baseUrl = "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=50&$orderby=receivedDateTime desc&$select=id,subject,from,receivedDateTime,bodyPreview,isRead";
+  const baseUrl = `https://graph.microsoft.com/v1.0/me/mailFolders/${folderId}/messages?$top=50&$orderby=receivedDateTime desc&$select=id,subject,from,receivedDateTime,bodyPreview,isRead`;
   const fetchUrl = skipToken ? `${baseUrl}&$skiptoken=${encodeURIComponent(skipToken)}` : baseUrl;
 
   const graphRes = await fetch(fetchUrl, { headers: { Authorization: `Bearer ${token}` } });
