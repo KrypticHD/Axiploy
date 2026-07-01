@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Bot, UserCheck, CheckSquare,
   BarChart2, Activity, FilePlus, Settings, X, MessageSquare,
   Bell, BookOpen, Mail, GitBranch, LifeBuoy, ChevronDown, ChevronRight, FolderOpen,
-  Sparkles, Calendar, Share2,
+  Sparkles, Calendar, Share2, ClipboardList, ListTodo, Inbox, FileText, LayoutGrid,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -41,6 +41,16 @@ const socialNavItems = [
 
 const SOCIAL_PATHS = ["/portal/social"];
 
+const adminNavItems = [
+  { href: "/portal/admin-assist", label: "Daily Briefing", icon: LayoutGrid },
+  { href: "/portal/admin-assist/tasks", label: "Tasks", icon: ListTodo },
+  { href: "/portal/admin-assist/meetings", label: "Meetings", icon: Calendar },
+  { href: "/portal/admin-assist/emails", label: "Email Drafts", icon: Inbox },
+  { href: "/portal/admin-assist/reports", label: "Reports", icon: FileText },
+];
+
+const ADMIN_ASSIST_PATHS = ["/portal/admin-assist"];
+
 interface PortalSidebarProps {
   open: boolean;
   onClose: () => void;
@@ -54,6 +64,8 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [hasSocial, setHasSocial] = useState(false);
   const [socialOpen, setSocialOpen] = useState(false);
+  const [hasAdmin, setHasAdmin] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
 
   useEffect(() => {
     if (ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
@@ -61,6 +73,9 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
     }
     if (SOCIAL_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
       setSocialOpen(true);
+    }
+    if (ADMIN_ASSIST_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+      setAdminOpen(true);
     }
   }, [pathname]);
 
@@ -78,6 +93,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
       .then((d) => {
         setHasOnboarding(!!d.onboarding);
         setHasSocial(!!d.social);
+        setHasAdmin(!!d.admin);
       })
       .catch(() => {});
   }, []);
@@ -127,6 +143,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
 
   const groupActive = ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const socialGroupActive = SOCIAL_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const adminGroupActive = ADMIN_ASSIST_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   const content = (
     <div className="flex flex-col h-full">
@@ -176,6 +193,27 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
               {onboardingOpen && (
                 <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
                   {onboardingNavItems.map((item) => renderNavItem(item, true))}
+                </ul>
+              )}
+            </li>
+          )}
+
+          {/* AI Admin group — only shown if client has admin package */}
+          {hasAdmin && (
+            <li>
+              <button
+                onClick={() => setAdminOpen((v) => !v)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                  adminGroupActive ? "text-accent-blue" : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
+                }`}
+              >
+                <ClipboardList size={16} className={adminGroupActive ? "text-accent-blue" : "text-text-muted"} />
+                <span className="flex-1 text-left">AI Admin</span>
+                {adminOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+              {adminOpen && (
+                <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
+                  {adminNavItems.map((item) => renderNavItem(item, true))}
                 </ul>
               )}
             </li>

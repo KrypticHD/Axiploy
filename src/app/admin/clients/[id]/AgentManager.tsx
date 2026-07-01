@@ -36,6 +36,12 @@ interface AgentConfig {
   platforms?: { facebook?: string; instagram?: string; linkedin?: string; twitter?: string };
   postApprovalRequired?: boolean;
   hashtags?: string[];
+  // Admin assistant fields
+  reportFrequency?: string;
+  emailTone?: string;
+  emailSignature?: string;
+  outlookEmail?: string;
+  taskReminderDays?: number;
 }
 
 interface Agent {
@@ -350,6 +356,196 @@ function socialSetupChecklist(config: AgentConfig | undefined): { label: string;
 }
 
 const BRAND_VOICES = ["Professional", "Casual", "Friendly", "Bold", "Inspirational"];
+
+const EMAIL_TONES = ["Professional", "Friendly", "Concise", "Formal", "Casual"];
+const REPORT_FREQUENCIES = ["Daily", "Weekly", "Monthly"];
+
+function adminSetupChecklist(config: AgentConfig | undefined): { label: string; ok: boolean }[] {
+  return [
+    { label: "Report frequency configured", ok: !!config?.reportFrequency },
+    { label: "Email tone set", ok: !!config?.emailTone },
+    { label: "Email signature added", ok: !!config?.emailSignature },
+    { label: "Outlook email entered", ok: !!config?.outlookEmail },
+  ];
+}
+
+function AdminConfigPanel({
+  agent, clientId, lastRun, allClients, onSaved,
+}: {
+  agent: Agent;
+  clientId: string;
+  lastRun: LastRun | null;
+  allClients: { id: string; name: string }[];
+  onSaved: (id: string, config: AgentConfig) => void;
+}) {
+  const cfg = agent.config || {};
+  const [reportFrequency, setReportFrequency] = useState(cfg.reportFrequency || "Weekly");
+  const [emailTone, setEmailTone] = useState(cfg.emailTone || "Professional");
+  const [emailSignature, setEmailSignature] = useState(cfg.emailSignature || "");
+  const [outlookEmail, setOutlookEmail] = useState(cfg.outlookEmail || "");
+  const [taskReminderDays, setTaskReminderDays] = useState(cfg.taskReminderDays ?? 1);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [showClone, setShowClone] = useState(false);
+  const [cloning, setCloning] = useState(false);
+
+  const status = liveStatus(agent.status, lastRun);
+  const checklist = adminSetupChecklist({ reportFrequency, emailTone, emailSignature, outlookEmail });
+  const allGreen = checklist.every((c) => c.ok);
+
+  async function handleSave() {
+    setSaving(true);
+    const config: AgentConfig = { reportFrequency, emailTone, emailSignature, outlookEmail, taskReminderDays };
+    const res = await fetch(`/api/admin/clients/${clientId}/agents`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentId: agent.id, config }),
+    });
+    setSaving(false);
+    if (res.ok) { onSaved(agent.id, config); setSaved(true); setTimeout(() => setSaved(false), 2000); }
+  }
+
+  async function handleClone(fromClientId: string) {
+    setCloning(true);
+    const res = await fetch(`/api/admin/clients/${fromClientId}/agents/clone?type=admin`);
+    const data = await res.json();
+    if (data.config) {
+      const c: AgentConfig = data.config;
+      if (c.reportFrequency) setReportFrequency(c.reportFrequency);
+      if (c.emailTone) setEmailTone(c.emailTone);
+      if (c.emailSignature) setEmailSignature(c.emailSignature);
+      if (c.outlookEmail) setOutlookEmail(c.outlookEmail);
+      if (c.taskReminderDays !== undefined) setTaskReminderDays(c.taskReminderDays);
+    }
+    setCloning(false);
+    setShowClone(false);
+  }
+
+  return (
+    <div className="mt-3 space-y-5">
+      {/* AI Overview */}
+      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider">AI Overview</p>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${status.dot} ${status.label === "Running" ? "animate-pulse" : ""}`} />
+            <span className={`text-xs font-medium ${status.color}`}>{status.label}</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Tasks Managed", value: agent.tasks_completed ?? 0 },
+            { label: "Hours Saved", value: agent.hours_saved ?? 0 },
+            { label: "Success Rate", value: `${agent.success_rate ?? 100}%` },
+          ].map((s) => (
+            <div key={s.label} className="text-center">
+              <p className="font-heading text-xl font-bold text-text-primary">{s.value}</p>
+              <p className="text-text-muted text-[10px] mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-white/[0.06]">
+          <Clock size={11} className="text-text-muted/50" />
+          <span className="text-text-muted/50 text-[10px]">Last run: {formatLastRun(lastRun)}</span>
+          <span className="text-text-muted/30 text-[10px] ml-auto">v{AGENT_VERSION}</span>
+        </div>
+      </div>
+
+      {/* Setup checklist */}
+      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider">Setup Checklist</p>
+          {allGreen
+            ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ready for production</span>
+            : <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Incomplete</span>}
+        </div>
+        <div className="space-y-2">
+          {checklist.map((item) => (
+            <div key={item.label} className="flex items-center gap-2">
+              {item.ok ? <CheckCircle2 size={13} className="text-emerald-400 flex-shrink-0" /> : <AlertTriangle size={13} className="text-amber-400 flex-shrink-0" />}
+              <span className={`text-xs ${item.ok ? "text-text-muted" : "text-amber-400/80"}`}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Config form */}
+      <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-5">
+        {allClients.length > 0 && (
+          <div>
+            <button onClick={() => setShowClone(!showClone)} className="flex items-center gap-2 text-xs text-accent-cyan hover:text-accent-blue transition-colors">
+              <Copy size={12} /> Copy configuration from another client
+              {showClone ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+            {showClone && (
+              <div className="mt-2 p-3 rounded-lg bg-white/[0.03] border border-white/[0.08] space-y-1.5">
+                {cloning && <p className="text-text-muted text-xs">Copying...</p>}
+                {!cloning && allClients.map((c) => (
+                  <button key={c.id} onClick={() => handleClone(c.id)}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-muted hover:text-text-primary hover:bg-white/[0.04] transition-colors">{c.name}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Reporting */}
+        <div>
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Reporting</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-text-muted text-xs mb-1 block">Report Frequency</label>
+              <select value={reportFrequency} onChange={(e) => setReportFrequency(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40">
+                {REPORT_FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-text-muted text-xs mb-1 block">Task Reminder (days before due)</label>
+              <input type="number" min={1} max={7} value={taskReminderDays} onChange={(e) => setTaskReminderDays(Number(e.target.value))}
+                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40" />
+            </div>
+          </div>
+        </div>
+
+        {/* Email */}
+        <div>
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Email Drafting</p>
+          <div className="space-y-3">
+            <div>
+              <label className="text-text-muted text-xs mb-1 block">Default Tone</label>
+              <select value={emailTone} onChange={(e) => setEmailTone(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40">
+                {EMAIL_TONES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-text-muted text-xs mb-1 block">Email Signature</label>
+              <textarea value={emailSignature} onChange={(e) => setEmailSignature(e.target.value)}
+                placeholder="Kind regards,&#10;John Smith&#10;Operations Manager" rows={3}
+                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40 resize-none" />
+            </div>
+            <div>
+              <label className="text-text-muted text-xs mb-1 block">Outlook Email (for Phase 2 connection)</label>
+              <input value={outlookEmail} onChange={(e) => setOutlookEmail(e.target.value)}
+                placeholder="name@company.com"
+                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+              <p className="text-text-muted/50 text-[10px] mt-1">Used when we connect Microsoft 365 in Phase 2</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Save */}
+        <div className="pt-1">
+          <button onClick={handleSave} disabled={saving}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
+            {saved ? <><Check size={14} /> Saved</> : saving ? "Saving..." : "Save Configuration"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SocialConfigPanel({
   agent, clientId, lastRun, allClients, onSaved,
@@ -730,7 +926,7 @@ export default function AgentManager({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {(agent.type === "onboarding" || agent.type === "social") && (
+                      {(agent.type === "onboarding" || agent.type === "social" || agent.type === "admin") && (
                         <button onClick={() => setConfiguringId(isConfiguring ? null : agent.id)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                             isConfiguring ? "bg-accent-blue/20 border-accent-blue/30 text-accent-blue" : "bg-white/[0.04] border-white/[0.10] text-text-muted hover:text-text-primary hover:bg-white/[0.08]"
@@ -762,6 +958,17 @@ export default function AgentManager({
                   {isConfiguring && agent.type === "social" && (
                     <div className="px-4 pb-4">
                       <SocialConfigPanel
+                        agent={agent}
+                        clientId={clientId}
+                        lastRun={lastRun}
+                        allClients={allClients}
+                        onSaved={handleConfigSaved}
+                      />
+                    </div>
+                  )}
+                  {isConfiguring && agent.type === "admin" && (
+                    <div className="px-4 pb-4">
+                      <AdminConfigPanel
                         agent={agent}
                         clientId={clientId}
                         lastRun={lastRun}
