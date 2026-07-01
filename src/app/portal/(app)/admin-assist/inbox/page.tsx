@@ -40,6 +40,8 @@ export default function InboxPage() {
   const [loading, setLoading] = useState(true);
   const [emails, setEmails] = useState<TriagedEmail[]>([]);
   const [fetching, setFetching] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextSkipToken, setNextSkipToken] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -70,7 +72,22 @@ export default function InboxPage() {
     const res = await fetch("/api/portal/admin-assist/outlook/inbox");
     const data = await res.json();
     setFetching(false);
-    if (data.emails) setEmails(data.emails);
+    if (data.emails) {
+      setEmails(data.emails);
+      setNextSkipToken(data.nextSkipToken || null);
+    }
+  }
+
+  async function loadMore() {
+    if (!nextSkipToken) return;
+    setLoadingMore(true);
+    const res = await fetch(`/api/portal/admin-assist/outlook/inbox?skipToken=${encodeURIComponent(nextSkipToken)}`);
+    const data = await res.json();
+    setLoadingMore(false);
+    if (data.emails) {
+      setEmails((prev) => [...prev, ...data.emails]);
+      setNextSkipToken(data.nextSkipToken || null);
+    }
   }
 
   async function handleDisconnect() {
@@ -229,6 +246,15 @@ export default function InboxPage() {
               </div>
             );
           })}
+          {/* Load more */}
+          {nextSkipToken && filter === "all" && (
+            <div className="pt-2 text-center">
+              <button onClick={loadMore} disabled={loadingMore}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl glass border border-white/[0.08] text-text-muted text-sm hover:text-text-primary hover:border-white/[0.16] transition-colors disabled:opacity-50 mx-auto">
+                {loadingMore ? <><Loader2 size={14} className="animate-spin" /> Loading...</> : `Load more (${emails.length} loaded so far)`}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

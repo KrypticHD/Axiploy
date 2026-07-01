@@ -50,10 +50,13 @@ export async function GET(req: NextRequest) {
 
   const token = await refreshIfNeeded(connection);
 
-  const graphRes = await fetch(
-    "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=20&$orderby=receivedDateTime desc&$select=id,subject,from,receivedDateTime,bodyPreview,isRead",
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
+  const { searchParams } = new URL(req.url);
+  const skipToken = searchParams.get("skipToken");
+
+  const baseUrl = "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages?$top=50&$orderby=receivedDateTime desc&$select=id,subject,from,receivedDateTime,bodyPreview,isRead";
+  const fetchUrl = skipToken ? `${baseUrl}&$skiptoken=${encodeURIComponent(skipToken)}` : baseUrl;
+
+  const graphRes = await fetch(fetchUrl, { headers: { Authorization: `Bearer ${token}` } });
 
   if (!graphRes.ok) {
     return NextResponse.json({ error: "Failed to fetch inbox" }, { status: 500 });
@@ -61,6 +64,14 @@ export async function GET(req: NextRequest) {
 
   const graphData = await graphRes.json();
   const emails: { id: string; subject: string; from: { emailAddress: { name: string; address: string } }; receivedDateTime: string; bodyPreview: string; isRead: boolean }[] = graphData.value || [];
+
+  // Extract next page token from @odata.nextLink
+  const nextLink: string | null = graphData["@odata.nextLink"] || null;
+  let nextSkipToken: string | null = null;
+  if (nextLink) {
+    const match = nextLink.match(/\$skiptoken=([^&]+)/i);
+    if (match) nextSkipToken = decodeURIComponent(match[1]);
+  }
 
   let triaged = emails.map((e) => ({
     id: e.id,
@@ -115,5 +126,5 @@ Respond ONLY with a JSON array matching the email order: [{"priority":"urgent","
     }
   }
 
-  return NextResponse.json({ emails: triaged });
+  return NextResponse.json({ emails: triaged, nextSkipToken });
 }
