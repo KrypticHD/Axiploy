@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2, Mail, AlertCircle, Clock, Info, Trash2, RefreshCw, Unlink, Folder, ChevronRight } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, Mail, AlertCircle, Clock, Info, Trash2, RefreshCw, Unlink, Folder, ChevronRight, Reply, Send, CheckCircle2, X } from "lucide-react";
 
 interface TriagedEmail {
   id: string;
@@ -14,6 +14,17 @@ interface TriagedEmail {
   priority: string;
   aiLabel: string | null;
   aiAction: string | null;
+}
+
+interface FullEmail {
+  id: string;
+  subject: string;
+  from: { name: string; address: string };
+  to: { name: string; address: string }[];
+  cc: { name: string; address: string }[];
+  receivedAt: string;
+  body: string;
+  bodyType: string;
 }
 
 interface OutlookFolder {
@@ -50,6 +61,45 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString("en-AU", { day: "numeric", month: "short" });
 }
 
+function EmailBodyFrame({ html, text }: { html?: string; text?: string }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [height, setHeight] = useState(200);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    const doc = iframe.contentDocument;
+    if (!doc) return;
+    const content = html || `<pre style="font-family:inherit;white-space:pre-wrap;margin:0">${text || ""}</pre>`;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 13px; line-height: 1.6; color: #d1d5db; background: transparent; overflow-x: hidden; word-break: break-word; }
+      a { color: #60a5fa; }
+      img { max-width: 100%; height: auto; }
+      blockquote { border-left: 3px solid #374151; margin: 8px 0; padding-left: 12px; color: #9ca3af; }
+      table { max-width: 100%; }
+    </style></head><body>${content}</body></html>`);
+    doc.close();
+    const resize = () => {
+      if (iframe.contentDocument?.body) {
+        setHeight(iframe.contentDocument.body.scrollHeight + 16);
+      }
+    };
+    iframe.onload = resize;
+    setTimeout(resize, 100);
+  }, [html, text]);
+
+  return (
+    <iframe
+      ref={iframeRef}
+      style={{ width: "100%", height, border: "none", background: "transparent" }}
+      sandbox="allow-same-origin"
+      title="Email body"
+    />
+  );
+}
+
 export default function InboxPage() {
   const [connected, setConnected] = useState<{ email: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,13 +111,27 @@ export default function InboxPage() {
   const [nextSkipToken, setNextSkipToken] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [fullEmail, setFullEmail] = useState<FullEmail | null>(null);
+  const [loadingFull, setLoadingFull] = useState(false);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sentId, setSentId] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const replyRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     checkStatus();
     const params = new URLSearchParams(window.location.search);
     if (params.get("outlook_connected") === "true") window.history.replaceState({}, "", window.location.pathname);
   }, []);
+
+  // When reply box opens, focus the textarea
+  useEffect(() => {
+    if (replyOpen && replyRef.current) {
+      setTimeout(() => replyRef.current?.focus(), 50);
+    }
+  }, [replyOpen]);
 
   async function checkStatus() {
     setLoading(true);
@@ -87,26 +151,22 @@ export default function InboxPage() {
       const data = await res.json();
       if (data.folders) setFolders(data.folders);
     } catch {
-      // Folders API failed — well-known folders still shown from WELL_KNOWN constant
+      // well-known folders still shown
     }
   }
 
   async function loadEmails(folderId: string, append = false) {
     if (!append) setFetching(true);
     else setLoadingMore(true);
-
     const res = await fetch(`/api/portal/admin-assist/outlook/inbox?folderId=${encodeURIComponent(folderId)}`);
     const data = await res.json();
-
     if (!append) setFetching(false);
     else setLoadingMore(false);
-
     if (data.emails) {
       if (append) setEmails((prev) => [...prev, ...data.emails]);
       else setEmails(data.emails);
       setNextSkipToken(data.nextSkipToken || null);
-      setExpanded(null);
-      setFilter("all");
+      closeExpanded();
     }
   }
 
@@ -119,6 +179,53 @@ export default function InboxPage() {
     if (data.emails) {
       setEmails((prev) => [...prev, ...data.emails]);
       setNextSkipToken(data.nextSkipToken || null);
+    }
+  }
+
+  async function openEmail(email: TriagedEmail) {
+    if (expanded === email.id) {
+      closeExpanded();
+      return;
+    }
+    closeExpanded();
+    setExpanded(email.id);
+    setLoadingFull(true);
+    // Mark as read optimistically
+    setEmails((prev) => prev.map((e) => e.id === email.id ? { ...e, isRead: true } : e));
+    try {
+      const res = await fetch(`/api/portal/admin-assist/outlook/message?id=${encodeURIComponent(email.id)}`);
+      const data = await res.json();
+      setFullEmail(data);
+    } catch {
+      setFullEmail(null);
+    }
+    setLoadingFull(false);
+  }
+
+  function closeExpanded() {
+    setExpanded(null);
+    setFullEmail(null);
+    setReplyOpen(false);
+    setReplyText("");
+    setSentId(null);
+  }
+
+  async function sendReply() {
+    if (!replyText.trim() || !expanded) return;
+    setSending(true);
+    const res = await fetch("/api/portal/admin-assist/outlook/message", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId: expanded, comment: replyText }),
+    });
+    setSending(false);
+    if (res.ok) {
+      setSentId(expanded);
+      setReplyOpen(false);
+      setReplyText("");
+    } else {
+      const err = await res.json();
+      alert("Failed to send: " + (err.error || "Unknown error"));
     }
   }
 
@@ -152,9 +259,6 @@ export default function InboxPage() {
     important: emails.filter((e) => e.priority === "important").length,
     follow_up: emails.filter((e) => e.priority === "follow_up").length,
   };
-
-  // Separate well-known folders from custom folders
-  const wellKnownIds = new Set(["inbox", "sentitems", "drafts", "deleteditems", "junkemail", "archive"]);
   const customFolders = folders.filter((f) => !Object.keys(WELL_KNOWN).some((k) => f.displayName.toLowerCase().replace(/\s/g, "") === k.replace(/\s/g, "")));
 
   if (loading) {
@@ -205,12 +309,10 @@ export default function InboxPage() {
         </div>
       </div>
 
-      <div className="flex gap-4 items-start min-h-[400px]">
+      <div className="flex gap-4 items-start">
         {/* Folder sidebar */}
         <div className="w-48 flex-shrink-0 glass rounded-2xl border border-white/[0.06] p-3 space-y-0.5">
           <p className="text-text-muted/50 text-[10px] font-semibold uppercase tracking-wider px-2 pb-1">Folders</p>
-
-          {/* Well-known folders */}
           {Object.entries(WELL_KNOWN).map(([id, name]) => {
             const folder = folders.find((f) => f.displayName.toLowerCase().replace(/\s/g, "") === id.replace(/\s/g, ""));
             const unread = folder?.unreadItemCount || 0;
@@ -225,8 +327,6 @@ export default function InboxPage() {
               </button>
             );
           })}
-
-          {/* Custom folders */}
           {customFolders.length > 0 && (
             <>
               <div className="pt-2 pb-1">
@@ -252,21 +352,17 @@ export default function InboxPage() {
 
         {/* Email list */}
         <div className="flex-1 min-w-0 space-y-3">
-          {/* Current folder + priority summary */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-text-muted text-sm">
-              <ChevronRight size={14} />
-              <span className="font-medium text-text-primary">{selectedFolder.name}</span>
-              <span className="text-text-muted/50 text-xs">· {emails.length} loaded</span>
-            </div>
+          <div className="flex items-center gap-1.5 text-text-muted text-sm">
+            <ChevronRight size={14} />
+            <span className="font-medium text-text-primary">{selectedFolder.name}</span>
+            <span className="text-text-muted/50 text-xs">· {emails.length} loaded</span>
           </div>
 
-          {/* Priority filter tabs */}
           {emails.length > 0 && (
             <div className="flex gap-1 flex-wrap">
               {["all", "urgent", "important", "follow_up", "fyi", "junk"].map((f) => (
                 <button key={f} onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filter === f ? "bg-accent-blue/20 text-accent-blue" : "text-text-muted hover:text-text-primary glass border border-white/[0.06]"}`}>
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === f ? "bg-accent-blue/20 text-accent-blue" : "text-text-muted hover:text-text-primary glass border border-white/[0.06]"}`}>
                   {f === "all" ? `All (${emails.length})` : f === "follow_up" ? `Follow-up${counts.follow_up > 0 ? ` (${counts.follow_up})` : ""}` : `${f.charAt(0).toUpperCase() + f.slice(1)}${f === "urgent" && counts.urgent > 0 ? ` (${counts.urgent})` : f === "important" && counts.important > 0 ? ` (${counts.important})` : ""}`}
                 </button>
               ))}
@@ -288,11 +384,12 @@ export default function InboxPage() {
               {filtered.map((email) => {
                 const cfg = PRIORITY_CONFIG[email.priority] || PRIORITY_CONFIG.fyi;
                 const isOpen = expanded === email.id;
+                const wasSent = sentId === email.id;
                 return (
                   <div key={email.id}
-                    className={`glass rounded-xl border transition-all cursor-pointer ${email.priority === "urgent" ? "border-red-500/20" : email.priority === "important" ? "border-amber-500/20" : "border-white/[0.06]"} ${isOpen ? "bg-white/[0.03]" : "hover:bg-white/[0.02]"}`}
-                    onClick={() => setExpanded(isOpen ? null : email.id)}>
-                    <div className="p-4">
+                    className={`glass rounded-xl border transition-all ${email.priority === "urgent" ? "border-red-500/20" : email.priority === "important" ? "border-amber-500/20" : "border-white/[0.06]"} ${isOpen ? "bg-white/[0.03]" : "hover:bg-white/[0.02]"}`}>
+                    {/* Email header row — click to expand */}
+                    <div className="p-4 cursor-pointer" onClick={() => openEmail(email)}>
                       <div className="flex items-start gap-3">
                         <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${cfg.dot}`} />
                         <div className="flex-1 min-w-0">
@@ -308,29 +405,107 @@ export default function InboxPage() {
                             <p className="text-text-muted/40 text-xs flex-shrink-0">{timeAgo(email.receivedAt)}</p>
                           </div>
                         </div>
+                        {isOpen && (
+                          <button onClick={(e) => { e.stopPropagation(); closeExpanded(); }}
+                            className="text-text-muted/40 hover:text-text-muted transition-colors flex-shrink-0">
+                            <X size={14} />
+                          </button>
+                        )}
                       </div>
-                      {isOpen && (
-                        <div className="mt-3 pt-3 border-t border-white/[0.06] space-y-3">
-                          <p className="text-text-muted text-sm leading-relaxed">{email.preview}</p>
-                          {email.aiAction && (
-                            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-accent-blue/5 border border-accent-blue/15">
-                              <span className="text-accent-blue text-xs font-semibold">AI suggests:</span>
-                              <span className="text-text-muted text-xs">{email.aiAction}</span>
-                            </div>
-                          )}
-                          <a href={`mailto:${email.fromEmail}?subject=Re: ${encodeURIComponent(email.subject)}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors"
-                            onClick={(e) => e.stopPropagation()}>
-                            <Mail size={11} /> Reply in Outlook
-                          </a>
-                        </div>
-                      )}
                     </div>
+
+                    {/* Expanded email view */}
+                    {isOpen && (
+                      <div className="border-t border-white/[0.06]">
+                        {/* Email meta */}
+                        {fullEmail && (
+                          <div className="px-4 py-3 bg-white/[0.02] space-y-1 text-xs text-text-muted/70 border-b border-white/[0.06]">
+                            <div><span className="text-text-muted/40">From:</span> {fullEmail.from?.name} {fullEmail.from?.address && `<${fullEmail.from.address}>`}</div>
+                            {fullEmail.to?.length > 0 && <div><span className="text-text-muted/40">To:</span> {fullEmail.to.map((r) => r.name || r.address).join(", ")}</div>}
+                            {fullEmail.cc?.length > 0 && <div><span className="text-text-muted/40">CC:</span> {fullEmail.cc.map((r) => r.name || r.address).join(", ")}</div>}
+                            <div><span className="text-text-muted/40">Date:</span> {new Date(fullEmail.receivedAt).toLocaleString("en-AU", { dateStyle: "medium", timeStyle: "short" })}</div>
+                          </div>
+                        )}
+
+                        {/* Email body */}
+                        <div className="px-4 py-4">
+                          {loadingFull ? (
+                            <div className="flex items-center gap-2 py-4 text-text-muted/60">
+                              <Loader2 size={14} className="animate-spin" /> <span className="text-sm">Loading email...</span>
+                            </div>
+                          ) : fullEmail ? (
+                            <EmailBodyFrame
+                              html={fullEmail.bodyType === "html" ? fullEmail.body : undefined}
+                              text={fullEmail.bodyType !== "html" ? fullEmail.body : undefined}
+                            />
+                          ) : (
+                            <p className="text-text-muted text-sm leading-relaxed">{email.preview}</p>
+                          )}
+                        </div>
+
+                        {/* AI suggestion */}
+                        {email.aiAction && (
+                          <div className="mx-4 mb-3 flex items-center gap-2 p-2.5 rounded-lg bg-accent-blue/5 border border-accent-blue/15">
+                            <span className="text-accent-blue text-xs font-semibold">AI suggests:</span>
+                            <span className="text-text-muted text-xs">{email.aiAction}</span>
+                          </div>
+                        )}
+
+                        {/* Sent confirmation */}
+                        {wasSent && !replyOpen && (
+                          <div className="mx-4 mb-3 flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
+                            <CheckCircle2 size={15} /> Reply sent successfully
+                          </div>
+                        )}
+
+                        {/* Reply compose box */}
+                        {replyOpen ? (
+                          <div className="mx-4 mb-4 rounded-xl border border-accent-blue/20 bg-white/[0.02] overflow-hidden">
+                            <div className="px-3 py-2 border-b border-white/[0.06] flex items-center justify-between">
+                              <span className="text-xs text-text-muted/70">
+                                Reply to <span className="text-text-muted">{fullEmail?.from?.name || email.from}</span>
+                              </span>
+                              <button onClick={() => { setReplyOpen(false); setReplyText(""); }}
+                                className="text-text-muted/40 hover:text-text-muted transition-colors">
+                                <X size={12} />
+                              </button>
+                            </div>
+                            <textarea
+                              ref={replyRef}
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              placeholder="Write your reply..."
+                              rows={6}
+                              className="w-full px-3 py-3 bg-transparent text-text-primary text-sm resize-none outline-none placeholder:text-text-muted/30"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) sendReply();
+                              }}
+                            />
+                            <div className="px-3 py-2 border-t border-white/[0.06] flex items-center justify-between">
+                              <span className="text-text-muted/30 text-[11px]">⌘ Enter to send</span>
+                              <button
+                                onClick={sendReply}
+                                disabled={sending || !replyText.trim()}
+                                className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-accent-blue text-white text-xs font-semibold hover:bg-accent-blue-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                {sending ? <><Loader2 size={12} className="animate-spin" /> Sending...</> : <><Send size={12} /> Send Reply</>}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="px-4 pb-4 flex items-center gap-2">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setReplyOpen(true); setSentId(null); }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors">
+                              <Reply size={12} /> Reply
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
 
-              {/* Load more */}
               {nextSkipToken && filter === "all" && (
                 <div className="pt-2 text-center">
                   <button onClick={loadMore} disabled={loadingMore}
