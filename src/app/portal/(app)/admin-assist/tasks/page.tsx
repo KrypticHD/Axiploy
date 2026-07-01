@@ -124,7 +124,7 @@ export default function TasksPage() {
             <div>
               <label className="text-text-muted text-xs mb-1 block">Priority</label>
               <select value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}
-                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40">
+                className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40">
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>

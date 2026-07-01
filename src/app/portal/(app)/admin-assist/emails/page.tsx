@@ -111,15 +111,15 @@ export default function EmailsPage() {
           <div>
             <label className="text-text-muted text-xs mb-1 block">Email type</label>
             <select value={form.emailType} onChange={(e) => setForm((f) => ({ ...f, emailType: e.target.value }))}
-              className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40">
-              {EMAIL_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40">
+              {EMAIL_TYPES.map((t) => <option key={t.value} value={t.value} className="bg-[#1c1c2e] text-white">{t.label}</option>)}
             </select>
           </div>
           <div>
             <label className="text-text-muted text-xs mb-1 block">Tone</label>
             <select value={form.tone} onChange={(e) => setForm((f) => ({ ...f, tone: e.target.value }))}
-              className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40">
-              {TONES.map((t) => <option key={t} value={t}>{t}</option>)}
+              className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40">
+              {TONES.map((t) => <option key={t} value={t} className="bg-[#1c1c2e] text-white">{t}</option>)}
             </select>
           </div>
         </div>

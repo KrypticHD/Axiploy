@@ -255,13 +255,13 @@ function OnboardingConfigPanel({
             <div>
               <label className="text-text-muted text-xs mb-1 block">Sender Name</label>
               <input value={emailSenderName} onChange={(e) => setEmailSenderName(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40"
+                className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40"
                 placeholder="Axiploy" />
             </div>
             <div>
               <label className="text-text-muted text-xs mb-1 block">Reply-To Address</label>
               <input value={emailSenderAddress} onChange={(e) => setEmailSenderAddress(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40"
+                className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40"
                 placeholder="onboarding@yourdomain.com" />
             </div>
           </div>
@@ -274,13 +274,13 @@ function OnboardingConfigPanel({
             <div>
               <label className="text-text-muted text-xs mb-1 block">Reminder Frequency (days)</label>
               <input type="number" min={1} max={30} value={reminderFrequencyDays} onChange={(e) => setReminderFrequencyDays(Number(e.target.value))}
-                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40" />
+                className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40" />
               <p className="text-text-muted/50 text-[10px] mt-1">Days between document reminders</p>
             </div>
             <div>
               <label className="text-text-muted text-xs mb-1 block">Escalation Period (days)</label>
               <input type="number" min={1} max={60} value={escalationDays} onChange={(e) => setEscalationDays(Number(e.target.value))}
-                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40" />
+                className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40" />
               <p className="text-text-muted/50 text-[10px] mt-1">Days before start date to flag as high risk</p>
             </div>
           </div>
@@ -496,14 +496,14 @@ function AdminConfigPanel({
             <div>
               <label className="text-text-muted text-xs mb-1 block">Report Frequency</label>
               <select value={reportFrequency} onChange={(e) => setReportFrequency(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40">
+                className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40">
                 {REPORT_FREQUENCIES.map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
             <div>
               <label className="text-text-muted text-xs mb-1 block">Task Reminder (days before due)</label>
               <input type="number" min={1} max={7} value={taskReminderDays} onChange={(e) => setTaskReminderDays(Number(e.target.value))}
-                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40" />
+                className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40" />
             </div>
           </div>
         </div>
@@ -515,7 +515,7 @@ function AdminConfigPanel({
             <div>
               <label className="text-text-muted text-xs mb-1 block">Default Tone</label>
               <select value={emailTone} onChange={(e) => setEmailTone(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40">
+                className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40">
                 {EMAIL_TONES.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
@@ -696,14 +696,14 @@ function SocialConfigPanel({
             <div>
               <label className="text-text-muted text-xs mb-1 block">Brand Voice</label>
               <select value={brandVoice} onChange={(e) => setBrandVoice(e.target.value)}
-                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40">
+                className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40">
                 {BRAND_VOICES.map((v) => <option key={v} value={v}>{v}</option>)}
               </select>
             </div>
             <div>
               <label className="text-text-muted text-xs mb-1 block">Posts Per Week</label>
               <input type="number" min={1} max={14} value={postFrequencyPerWeek} onChange={(e) => setPostFrequencyPerWeek(Number(e.target.value))}
-                className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40" />
+                className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40" />
               <p className="text-text-muted/50 text-[10px] mt-1">Target posts to generate per week</p>
             </div>
           </div>
@@ -717,7 +717,7 @@ function SocialConfigPanel({
               <div key={p}>
                 <label className="text-text-muted text-xs mb-1 block capitalize">{p === "twitter" ? "Twitter / X" : p}</label>
                 <input value={platforms[p] || ""} onChange={(e) => setPlatforms((prev) => ({ ...prev, [p]: e.target.value }))}
-                  className="w-full px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/40"
+                  className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40"
                   placeholder={`@handle`} />
               </div>
             ))}
