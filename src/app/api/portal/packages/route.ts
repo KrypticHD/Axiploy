@@ -1,30 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
+const EMPTY = { onboarding: false, admin: false, growth: false, social: false, compliance: false, agents: [] };
+
 export async function GET(req: NextRequest) {
   const raw = req.cookies.get("axiploy_session")?.value;
-  if (!raw) return NextResponse.json({ onboarding: false, admin: false, growth: false });
+  if (!raw) return NextResponse.json(EMPTY);
 
   let session: { clientId?: string };
   try { session = JSON.parse(raw); } catch {
-    return NextResponse.json({ onboarding: false, admin: false, growth: false });
+    return NextResponse.json(EMPTY);
   }
 
   if (!session.clientId) {
-    return NextResponse.json({ onboarding: false, admin: false, growth: false, social: false });
+    return NextResponse.json(EMPTY);
   }
 
-  const { data } = await supabaseAdmin()
-    .from("digital_employees")
-    .select("type")
-    .eq("client_id", session.clientId);
+  const supabase = supabaseAdmin();
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const types = (data || []).map((r: { type: string }) => r.type);
+  const [deRes, actRes] = await Promise.all([
+    supabase
+      .from("digital_employees")
+      .select("type, name, status")
+      .eq("client_id", session.clientId),
+    supabase
+      .from("activity_log")
+      .select("digital_employee")
+      .eq("client_id", session.clientId)
+      .gte("created_at", since)
+      .limit(200),
+  ]);
+
+  const rows = (deRes.data || []) as { type: string; name: string; status: string }[];
+  const activeNames = new Set(
+    ((actRes.data || []) as { digital_employee: string }[]).map((r) => r.digital_employee)
+  );
+
+  const types = rows.map((r) => r.type);
+  const agents = rows.map((r) => ({
+    type: r.type,
+    name: r.name,
+    status: r.status,
+    working: activeNames.has(r.name),
+  }));
+
   return NextResponse.json({
     onboarding: types.includes("onboarding"),
     admin: types.includes("admin"),
     growth: types.includes("growth"),
     social: types.includes("social"),
     compliance: types.includes("compliance"),
+    agents,
   });
 }

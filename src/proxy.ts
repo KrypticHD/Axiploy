@@ -29,7 +29,7 @@ export function proxy(req: NextRequest) {
       const user = JSON.parse(session);
       if (user.role !== "axiploy_admin") {
         const url = req.nextUrl.clone();
-        url.pathname = "/portal/dashboard";
+        url.pathname = "/portal/inbox";
         return NextResponse.redirect(url);
       }
     } catch {

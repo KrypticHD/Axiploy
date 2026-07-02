@@ -1,19 +1,21 @@
 import MetricCard from "@/components/portal/MetricCard";
 import ActivityItem from "@/components/portal/ActivityItem";
 import StatusPill from "@/components/portal/StatusPill";
+import AgentAvatar from "@/components/portal/AgentAvatar";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import {
   Bot, Clock, CheckSquare, AlertTriangle, BarChart2,
-  UserCheck, ClipboardList, TrendingUp, ArrowRight, Plus,
+  ArrowRight, Plus, Inbox,
 } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
 
-const deIcons: Record<string, React.FC<{ size?: number; className?: string }>> = {
-  onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp,
-};
 const deLinks: Record<string, string> = {
-  onboarding: "/portal/onboarding", admin: "/portal/activity", growth: "/portal/workforce",
+  onboarding: "/portal/onboarding",
+  admin: "/portal/admin-assist",
+  growth: "/portal/workforce",
+  social: "/portal/social",
+  compliance: "/portal/compliance",
 };
 
 async function getSession() {
@@ -24,7 +26,12 @@ async function getSession() {
 }
 
 type ActivityEntry = { id: string; clientId: string; digitalEmployee: string; action: string; result: string; timestamp: string; status: "success" | "warning" | "error" };
-type DigitalEmployee = { id: string; clientId: string; name: string; type: "onboarding" | "admin" | "growth"; status: "Active" | "Paused" | "Setup"; stats: { label: string; value: string }[] };
+type DigitalEmployee = {
+  id: string; clientId: string; name: string; type: string;
+  status: "Active" | "Paused" | "Setup";
+  working: boolean; isNew: boolean; daysActive: number;
+  stats: { label: string; value: string }[];
+};
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -34,20 +41,28 @@ export default async function DashboardPage() {
 
   let pendingApprovals = 0;
   let highRiskItems = 0;
+  let draftEmails = 0;
+  let draftPosts = 0;
   let recentActivity: ActivityEntry[] = [];
   let digitalEmployees: DigitalEmployee[] = [];
+  let tasksYesterday = 0;
 
   if (clientId) {
     const supabase = supabaseAdmin();
-    const [approvalsRes, onboardingRes, activityRes, deRes] = await Promise.all([
+    const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+    const [approvalsRes, onboardingRes, activityRes, deRes, recentActRes] = await Promise.all([
       supabase.from("approvals").select("id").eq("client_id", clientId).eq("status", "pending"),
-      supabase.from("onboarding").select("id, status").eq("client_id", clientId),
-      supabase.from("activity_log").select("*").eq("client_id", clientId).order("created_at", { ascending: false }).limit(5),
+      supabase.from("onboarding").select("id, status, risk_level").eq("client_id", clientId),
+      supabase.from("activity_log").select("*").eq("client_id", clientId).order("created_at", { ascending: false }).limit(6),
       supabase.from("digital_employees").select("*").eq("client_id", clientId),
+      supabase.from("activity_log").select("digital_employee").eq("client_id", clientId).gte("created_at", dayAgo).limit(200),
     ]);
 
     pendingApprovals = approvalsRes.data?.length ?? 0;
-    highRiskItems = (onboardingRes.data || []).filter((r) => r.status === "High").length;
+    highRiskItems = (onboardingRes.data || []).filter((r) => r.risk_level === "High" || r.risk_level === "Critical").length;
+    tasksYesterday = recentActRes.data?.length ?? 0;
+    const workingNames = new Set((recentActRes.data || []).map((r: { digital_employee: string }) => r.digital_employee));
 
     if (activityRes.data && activityRes.data.length > 0) {
       recentActivity = activityRes.data.map((a) => ({
@@ -71,9 +86,11 @@ export default async function DashboardPage() {
 
       const ed = emailDrafts.data || [];
       const edSent = ed.filter((r) => r.status === "sent").length;
+      draftEmails = ed.filter((r) => r.status === "draft").length;
 
       const sp = socialPosts.data || [];
       const spApproved = sp.filter((r) => r.status === "approved" || r.status === "published").length;
+      draftPosts = sp.filter((r) => r.status === "draft").length;
 
       const statsForType = (type: string): { tasks: number; hours: number; rate: number; label: string } => {
         if (type === "onboarding") {
@@ -115,6 +132,7 @@ export default async function DashboardPage() {
         return {
           id: de.id, clientId: clientId, name: de.name, type: de.type,
           daysActive, isNew,
+          working: workingNames.has(de.name),
           status: (de.status === "Error" ? "Paused" : de.status) as "Active" | "Paused" | "Setup",
           stats: isNew
             ? [
@@ -132,86 +150,98 @@ export default async function DashboardPage() {
     }
   }
 
-  const tasksCompleted = digitalEmployees.reduce((acc, de) => {
-    const taskStat = de.stats.find((s) => s.label === "Tasks" || s.label === "Tasks Completed");
-    return acc + (parseInt(String(taskStat?.value || "0")) || 0);
-  }, 0);
-
   const hoursSaved = digitalEmployees.reduce((acc, de) => {
     const hourStat = de.stats.find((s) => String(s.label).includes("Hour"));
     return acc + (parseFloat(String(hourStat?.value || "0")) || 0);
   }, 0);
 
+  const decisionsWaiting = pendingApprovals + draftEmails + draftPosts;
+  const workingCount = digitalEmployees.filter((d) => d.working).length;
+
+  const summary =
+    digitalEmployees.length === 0
+      ? `Your AI workforce for ${clientName} is being set up.`
+      : `${workingCount > 0 ? `${workingCount} AI employee${workingCount !== 1 ? "s" : ""} active in the last 24h · ` : ""}${tasksYesterday} action${tasksYesterday !== 1 ? "s" : ""} completed${decisionsWaiting > 0 ? ` · ${decisionsWaiting} decision${decisionsWaiting !== 1 ? "s" : ""} waiting for you` : " · nothing needs you right now"}`;
+
   return (
-    <div className="space-y-7">
-      <div>
-        <h1 className="font-heading text-2xl font-bold text-text-primary">Good morning, {firstName}</h1>
-        <p className="text-text-muted text-sm mt-1">
-          Here&apos;s what your AI workforce has been doing for {clientName}.
-        </p>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-xl font-bold text-text-primary">Good morning, {firstName}</h1>
+          <p className="text-text-muted text-[13px] mt-1">{summary}</p>
+        </div>
+        {decisionsWaiting > 0 && (
+          <Link
+            href="/portal/inbox"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-blue hover:bg-accent-blue-light text-white text-[13px] font-semibold transition-colors shadow-lg shadow-accent-blue/20 shrink-0"
+          >
+            <Inbox size={14} />
+            Review {decisionsWaiting} item{decisionsWaiting !== 1 ? "s" : ""}
+            <ArrowRight size={13} />
+          </Link>
+        )}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <MetricCard label="Active Employees" value={digitalEmployees.length} icon={Bot} accent="blue" />
-        <MetricCard label="Tasks Completed" value={tasksCompleted} icon={CheckSquare} accent="cyan" sub="This month" />
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        <MetricCard label="AI Employees" value={digitalEmployees.length} icon={Bot} accent="blue" />
+        <MetricCard label="Actions (24h)" value={tasksYesterday} icon={CheckSquare} accent="cyan" />
         <MetricCard label="Hours Saved" value={`${hoursSaved}h`} icon={Clock} accent="green" sub="This month" />
-        <MetricCard label="Pending Approvals" value={pendingApprovals} icon={CheckSquare} accent="amber" />
-        <MetricCard label="High Risk Items" value={highRiskItems} icon={AlertTriangle} accent="red" />
-        <MetricCard label="Report Status" value={digitalEmployees.length > 0 ? "Ready" : "No data"} icon={BarChart2} accent="cyan" />
+        <MetricCard label="Decisions Waiting" value={decisionsWaiting} icon={Inbox} accent="amber" />
+        <MetricCard label="High Risk" value={highRiskItems} icon={AlertTriangle} accent="red" />
+        <MetricCard label="Reports" value={digitalEmployees.length > 0 ? "Ready" : "—"} icon={BarChart2} accent="cyan" />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
+      <div className="grid lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-heading font-semibold text-text-primary">AI Workforce</h2>
-            <Link href="/portal/workforce" className="text-accent-cyan text-xs hover:underline flex items-center gap-1">
-              View all <ArrowRight size={12} />
+            <h2 className="font-heading text-[15px] font-semibold text-text-primary">Your AI employees</h2>
+            <Link href="/portal/workforce" className="text-accent-cyan text-[12px] hover:underline flex items-center gap-1">
+              View all <ArrowRight size={11} />
             </Link>
           </div>
 
           {digitalEmployees.length === 0 ? (
             <div className="glass rounded-2xl p-10 text-center border border-white/[0.06]">
-              <Bot size={28} className="text-text-muted/30 mx-auto mb-3" />
+              <Bot size={26} className="text-text-muted/30 mx-auto mb-3" />
               <p className="text-text-primary text-sm font-medium">No AI employees configured yet</p>
-              <p className="text-text-muted text-xs mt-1 mb-4">Your digital workforce will appear here once set up by the Axiploy team.</p>
-              <Link href="/portal/support" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-xs font-medium hover:bg-accent-blue/20 transition-colors">
+              <p className="text-text-muted text-[12px] mt-1 mb-4">Your digital workforce will appear here once set up by the Axiploy team.</p>
+              <Link href="/portal/support" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-[12px] font-medium hover:bg-accent-blue/20 transition-colors">
                 <Plus size={12} /> Request setup
               </Link>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="grid sm:grid-cols-2 gap-3">
               {digitalEmployees.map((de) => {
-                const typeKey = "type" in de ? de.type : "onboarding";
-                const Icon = deIcons[typeKey] || Bot;
-                const href = deLinks[typeKey] || "/portal/workforce";
+                const href = deLinks[de.type] || "/portal/workforce";
                 return (
-                  <div key={de.id} className={`glass rounded-2xl p-5 border transition-colors ${(de as { isNew?: boolean }).isNew ? "border-accent-blue/15 hover:border-accent-blue/30" : "border-white/[0.08] hover:border-accent-blue/20"}`}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-blue/20 to-accent-cyan/10 flex items-center justify-center">
-                          <Icon size={16} className="text-accent-cyan" />
-                        </div>
-                        <p className="text-text-primary text-sm font-semibold">{de.name}</p>
+                  <Link
+                    key={de.id}
+                    href={href}
+                    className="glass rounded-xl p-4 border border-white/[0.06] hover:border-accent-blue/25 transition-colors group"
+                  >
+                    <div className="flex items-center gap-2.5 mb-3">
+                      <AgentAvatar type={de.type} size={28} working={de.working} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-text-primary text-[13px] font-semibold truncate">{de.name}</p>
+                        <p className="text-[11px] mt-px">
+                          {de.working ? (
+                            <span className="text-emerald-400">working now</span>
+                          ) : (
+                            <span className="text-text-muted/60">{de.isNew ? `active · ${de.daysActive}d running` : "idle"}</span>
+                          )}
+                        </p>
                       </div>
-                      <StatusPill status={de.status} />
+                      <StatusPill status={de.status} size="sm" />
                     </div>
-                    {(de as { isNew?: boolean }).isNew && (
-                      <div className="mb-3 px-3 py-2 rounded-xl bg-accent-blue/5 border border-accent-blue/15 text-xs text-accent-blue/80">
-                        Your agent is active and monitoring — stats will build as it works.
-                      </div>
-                    )}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-3 gap-2">
                       {de.stats.map((s) => (
-                        <div key={s.label} className="bg-white/[0.03] rounded-xl p-3 text-center">
-                          <p className="font-heading font-bold text-text-primary text-lg">{s.value}</p>
-                          <p className="text-text-muted text-[10px] mt-0.5 leading-tight">{s.label}</p>
+                        <div key={s.label} className="bg-white/[0.03] rounded-lg px-2 py-2 text-center">
+                          <p className="font-heading font-bold text-text-primary text-[15px] leading-none">{s.value}</p>
+                          <p className="text-text-muted text-[9px] mt-1 leading-tight">{s.label}</p>
                         </div>
                       ))}
                     </div>
-                    <Link href={href} className="mt-4 flex items-center gap-1.5 text-xs text-accent-cyan hover:text-accent-blue transition-colors">
-                      View details <ArrowRight size={12} />
-                    </Link>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
@@ -219,19 +249,19 @@ export default async function DashboardPage() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading font-semibold text-text-primary">Recent Activity</h2>
-            <Link href="/portal/activity" className="text-accent-cyan text-xs hover:underline flex items-center gap-1">
-              View all <ArrowRight size={12} />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-heading text-[15px] font-semibold text-text-primary">Activity</h2>
+            <Link href="/portal/activity" className="text-accent-cyan text-[12px] hover:underline flex items-center gap-1">
+              View all <ArrowRight size={11} />
             </Link>
           </div>
           {recentActivity.length === 0 ? (
             <div className="glass rounded-2xl p-8 text-center border border-white/[0.06]">
-              <BarChart2 size={22} className="text-text-muted/30 mx-auto mb-2" />
-              <p className="text-text-muted text-xs">No activity yet</p>
+              <BarChart2 size={20} className="text-text-muted/30 mx-auto mb-2" />
+              <p className="text-text-muted text-[12px]">No activity yet</p>
             </div>
           ) : (
-            <div className="glass rounded-2xl px-5 py-1">
+            <div className="glass rounded-xl px-4 py-1 border border-white/[0.06]">
               {recentActivity.map((entry) => (
                 <ActivityItem key={entry.id} entry={entry} />
               ))}

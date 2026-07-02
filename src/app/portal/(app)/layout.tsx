@@ -6,6 +6,7 @@ import PortalSidebar from "@/components/portal/PortalSidebar";
 import PortalTopbar from "@/components/portal/PortalTopbar";
 import AskPanel from "@/components/portal/AskPanel";
 import EmptyPreviewBanner from "@/components/portal/EmptyPreviewBanner";
+import CommandPalette from "@/components/portal/CommandPalette";
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -36,6 +37,13 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       </button>
 
       <AskPanel open={panelOpen} onClose={() => setPanelOpen(false)} />
+
+      <CommandPalette
+        onAsk={(query) => {
+          if (query) sessionStorage.setItem("axiploy_ask_prefill", query);
+          setPanelOpen(true);
+        }}
+      />
     </div>
   );
 }

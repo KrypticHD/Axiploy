@@ -1,12 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Bell, Menu, LogOut, Settings } from "lucide-react";
-import { MOCK_APPROVALS } from "@/lib/mock-data";
 import Link from "next/link";
-
-const mockPending = MOCK_APPROVALS.filter((a) => a.status === "pending").length;
 
 interface User {
   name: string;
@@ -15,9 +12,39 @@ interface User {
   email: string;
 }
 
+const PAGE_LABELS: [string, string][] = [
+  ["/portal/inbox", "Inbox"],
+  ["/portal/dashboard", "Dashboard"],
+  ["/portal/workforce", "AI Employees"],
+  ["/portal/workflows", "Workflow Health"],
+  ["/portal/reports", "Reports"],
+  ["/portal/activity", "Activity"],
+  ["/portal/knowledge", "Knowledge Base"],
+  ["/portal/templates", "Email Templates"],
+  ["/portal/support", "Support"],
+  ["/portal/settings", "Settings"],
+  ["/portal/onboarding", "Onboarding"],
+  ["/portal/forms/new-employee", "New Employee"],
+  ["/portal/approvals", "Approvals"],
+  ["/portal/admin-assist/tasks", "Tasks"],
+  ["/portal/admin-assist/meetings", "Meetings"],
+  ["/portal/admin-assist/inbox", "Email Inbox"],
+  ["/portal/admin-assist/emails", "Email Drafts"],
+  ["/portal/admin-assist/reports", "Admin Reports"],
+  ["/portal/admin-assist", "Daily Briefing"],
+  ["/portal/social/posts", "Scheduled Posts"],
+  ["/portal/social/analytics", "Social Analytics"],
+  ["/portal/social", "Post Studio"],
+  ["/portal/compliance", "Compliance Register"],
+  ["/portal/notifications", "Notifications"],
+  ["/portal/ask", "Ask Axiploy"],
+];
+
 export default function PortalTopbar({ onMenuOpen }: { onMenuOpen: () => void }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
+  const [inboxCount, setInboxCount] = useState(0);
 
   useEffect(() => {
     fetch("/api/portal/me")
@@ -26,65 +53,76 @@ export default function PortalTopbar({ onMenuOpen }: { onMenuOpen: () => void })
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    fetch("/api/portal/inbox?count=1")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && typeof d.total === "number") setInboxCount(d.total); })
+      .catch(() => {});
+  }, [pathname]);
+
   async function handleLogout() {
     await fetch("/api/portal/auth/logout", { method: "POST" });
     router.push("/portal/login");
   }
 
+  const pageLabel = PAGE_LABELS.find(([p]) => pathname === p || pathname.startsWith(p + "/"))?.[1] || "Portal";
   const displayName = user?.name || "—";
-  const displayRole = user?.role?.replace(/_/g, " ") || "";
-  const displayClient = user?.clientName || "AI Workforce Portal";
+  const displayClient = user?.clientName || "";
   const initials = displayName !== "—"
     ? displayName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
     : "?";
 
   return (
-    <header className="h-14 border-b border-white/[0.06] flex items-center justify-between px-5 bg-surface/80 backdrop-blur-sm shrink-0">
-      <div className="flex items-center gap-3">
+    <header className="h-12 border-b border-white/[0.06] flex items-center justify-between px-4 bg-surface/80 backdrop-blur-sm shrink-0">
+      <div className="flex items-center gap-3 min-w-0">
         <button
           onClick={onMenuOpen}
           className="lg:hidden text-text-muted hover:text-text-primary"
           aria-label="Open menu"
         >
-          <Menu size={20} />
+          <Menu size={18} />
         </button>
-        <div>
-          <p className="text-text-primary text-sm font-semibold leading-none">{displayClient}</p>
-          <p className="text-text-muted text-xs mt-0.5">AI Workforce Portal</p>
+        <div className="flex items-center gap-2 min-w-0 text-[13px]">
+          {displayClient && (
+            <>
+              <span className="text-text-muted truncate hidden sm:block">{displayClient}</span>
+              <span className="text-text-muted/30 hidden sm:block">/</span>
+            </>
+          )}
+          <span className="text-text-primary font-medium truncate">{pageLabel}</span>
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <Link
-          href="/portal/approvals"
-          className="relative w-9 h-9 rounded-xl glass flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
+          href="/portal/inbox"
+          className="relative w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-white/[0.05] transition-colors"
+          title="Work inbox"
         >
-          <Bell size={16} />
-          {mockPending > 0 && (
-            <span className="absolute -top-1 -right-1 bg-amber-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-              {mockPending}
+          <Bell size={15} />
+          {inboxCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 bg-accent-blue text-white text-[9px] font-bold min-w-[15px] h-[15px] px-0.5 rounded-full flex items-center justify-center">
+              {inboxCount > 99 ? "99" : inboxCount}
             </span>
           )}
         </Link>
 
         <Link
           href="/portal/settings"
-          className="w-9 h-9 rounded-xl glass flex items-center justify-center text-text-muted hover:text-text-primary transition-colors"
+          className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-white/[0.05] transition-colors"
+          title="Settings"
         >
-          <Settings size={16} />
+          <Settings size={15} />
         </Link>
 
-        <div className="flex items-center gap-2.5 ml-1 pl-3 border-l border-white/[0.08]">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-blue to-accent-cyan flex items-center justify-center text-white text-xs font-bold">
+        <div className="flex items-center gap-2 ml-1 pl-2.5 border-l border-white/[0.08]">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-accent-blue to-accent-cyan flex items-center justify-center text-white text-[10px] font-bold">
             {initials}
           </div>
-          <div className="hidden sm:block">
-            <p className="text-text-primary text-xs font-medium leading-none">{displayName}</p>
-            <p className="text-text-muted text-[10px] mt-0.5 capitalize">{displayRole}</p>
-          </div>
+          <span className="hidden sm:block text-text-primary text-[12px] font-medium">{displayName}</span>
           <button
             onClick={handleLogout}
-            className="w-8 h-8 rounded-xl glass flex items-center justify-center text-text-muted hover:text-red-400 transition-colors"
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-text-muted hover:text-red-400 hover:bg-white/[0.05] transition-colors"
             title="Log out"
           >
             <LogOut size={14} />

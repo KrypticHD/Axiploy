@@ -43,7 +43,7 @@ export default function LoginPage() {
     });
 
     if (res.ok) {
-      router.push("/portal/dashboard");
+      router.push("/portal/inbox");
       router.refresh();
     } else {
       const data = await res.json();

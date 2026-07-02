@@ -32,7 +32,16 @@ export default function AskPanel({ open, onClose }: Props) {
   }, [messages, loading]);
 
   useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 300);
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 300);
+      // Pick up a prefilled question (e.g. from the command palette)
+      const prefill = sessionStorage.getItem("axiploy_ask_prefill");
+      if (prefill) {
+        sessionStorage.removeItem("axiploy_ask_prefill");
+        send(prefill);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const send = useCallback(async (text: string) => {

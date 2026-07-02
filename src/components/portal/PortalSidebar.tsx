@@ -7,16 +7,16 @@ import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Bot, UserCheck, CheckSquare,
   BarChart2, Activity, FilePlus, Settings, X, MessageSquare,
-  Bell, BookOpen, Mail, GitBranch, LifeBuoy, ChevronDown, ChevronRight, FolderOpen,
+  BookOpen, Mail, GitBranch, LifeBuoy, ChevronDown, ChevronRight, FolderOpen,
   Sparkles, Calendar, Share2, ClipboardList, ListTodo, Inbox, FileText, LayoutGrid, Shield,
 } from "lucide-react";
+import AgentAvatar from "./AgentAvatar";
 
 const mainNavItems = [
-  { href: "/portal/ask", label: "Ask Axiploy", icon: MessageSquare, highlight: true },
+  { href: "/portal/inbox", label: "Inbox", icon: Inbox, badge: true },
   { href: "/portal/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/portal/workforce", label: "AI Workforce", icon: Bot },
+  { href: "/portal/workforce", label: "AI Employees", icon: Bot },
   { href: "/portal/workflows", label: "Workflow Health", icon: GitBranch },
-  { href: "/portal/notifications", label: "Notifications", icon: Bell },
   { href: "/portal/reports", label: "Reports", icon: BarChart2 },
   { href: "/portal/activity", label: "Activity", icon: Activity },
   { href: "/portal/knowledge", label: "Knowledge Base", icon: BookOpen },
@@ -28,7 +28,7 @@ const mainNavItems = [
 const onboardingNavItems = [
   { href: "/portal/onboarding", label: "Onboarding", icon: UserCheck },
   { href: "/portal/forms/new-employee", label: "New Employee", icon: FilePlus },
-  { href: "/portal/approvals", label: "Approvals", icon: CheckSquare, badge: true },
+  { href: "/portal/approvals", label: "Approvals", icon: CheckSquare },
 ];
 
 const ONBOARDING_PATHS = ["/portal/onboarding", "/portal/forms/new-employee", "/portal/approvals"];
@@ -45,7 +45,7 @@ const adminNavItems = [
   { href: "/portal/admin-assist", label: "Daily Briefing", icon: LayoutGrid },
   { href: "/portal/admin-assist/tasks", label: "Tasks", icon: ListTodo },
   { href: "/portal/admin-assist/meetings", label: "Meetings", icon: Calendar },
-  { href: "/portal/admin-assist/inbox", label: "Inbox", icon: Inbox },
+  { href: "/portal/admin-assist/inbox", label: "Email Inbox", icon: Mail },
   { href: "/portal/admin-assist/emails", label: "Email Drafts", icon: FileText },
   { href: "/portal/admin-assist/reports", label: "Reports", icon: BarChart2 },
 ];
@@ -58,6 +58,13 @@ const complianceNavItems = [
 
 const COMPLIANCE_PATHS = ["/portal/compliance"];
 
+interface Agent {
+  type: string;
+  name: string;
+  status: string;
+  working: boolean;
+}
+
 interface PortalSidebarProps {
   open: boolean;
   onClose: () => void;
@@ -66,7 +73,7 @@ interface PortalSidebarProps {
 
 export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSidebarProps) {
   const pathname = usePathname();
-  const [pendingCount, setPendingCount] = useState(0);
+  const [inboxCount, setInboxCount] = useState(0);
   const [hasOnboarding, setHasOnboarding] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [hasSocial, setHasSocial] = useState(false);
@@ -75,6 +82,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   const [adminOpen, setAdminOpen] = useState(false);
   const [hasCompliance, setHasCompliance] = useState(false);
   const [complianceOpen, setComplianceOpen] = useState(false);
+  const [agents, setAgents] = useState<Agent[]>([]);
 
   useEffect(() => {
     if (ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
@@ -92,12 +100,9 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   }, [pathname]);
 
   useEffect(() => {
-    fetch("/api/portal/approvals")
-      .then((r) => r.json())
-      .then((d) => {
-        const pending = (d.approvals || []).filter((a: { status: string }) => a.status === "pending").length;
-        setPendingCount(pending);
-      })
+    fetch("/api/portal/inbox?count=1")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && typeof d.total === "number") setInboxCount(d.total); })
       .catch(() => {});
 
     fetch("/api/portal/packages")
@@ -107,64 +112,82 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
         setHasSocial(!!d.social);
         setHasAdmin(!!d.admin);
         setHasCompliance(!!d.compliance);
+        setAgents(d.agents || []);
       })
       .catch(() => {});
-  }, []);
+  }, [pathname]);
 
-  function renderNavItem(item: { href: string; label: string; icon: React.ElementType; highlight?: boolean; badge?: boolean }, indented = false) {
-    const active = pathname === item.href || pathname.startsWith(item.href + "/");
-    const isAsk = !!item.highlight;
-    const badgeCount = item.badge ? pendingCount : 0;
+  function renderNavItem(
+    item: { href: string; label: string; icon: React.ElementType; badge?: boolean },
+    indented = false
+  ) {
+    const active = pathname === item.href || (item.href !== "/portal/inbox" && pathname.startsWith(item.href + "/"));
+    const badgeCount = item.badge ? inboxCount : 0;
 
     return (
       <li key={item.href}>
-        <div className="flex items-center gap-1">
-          <Link
-            href={item.href}
-            onClick={onClose}
-            className={`flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${indented ? "pl-6" : ""} ${
-              active && isAsk
-                ? "bg-gradient-to-r from-accent-blue/20 to-accent-cyan/10 text-accent-blue border border-accent-blue/30"
-                : active
-                ? "bg-accent-blue/15 text-accent-blue border border-accent-blue/20"
-                : isAsk
-                ? "text-accent-blue/80 hover:text-accent-blue hover:bg-accent-blue/5 border border-accent-blue/10 hover:border-accent-blue/25"
-                : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
-            }`}
-          >
-            <item.icon size={16} className={active || isAsk ? "text-accent-blue" : "text-text-muted"} />
-            <span className="flex-1">{item.label}</span>
-            {badgeCount > 0 && (
-              <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                {badgeCount}
-              </span>
-            )}
-          </Link>
-          {isAsk && (
-            <button
-              onClick={() => { onClose(); onAskToggle(); }}
-              title="Quick chat"
-              className="p-2 rounded-lg text-accent-blue/60 hover:text-accent-blue hover:bg-accent-blue/10 transition-colors flex-shrink-0"
-            >
-              <MessageSquare size={14} />
-            </button>
+        <Link
+          href={item.href}
+          onClick={onClose}
+          className={`flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-colors duration-150 ${indented ? "pl-5" : ""} ${
+            active
+              ? "bg-white/[0.06] text-text-primary"
+              : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
+          }`}
+        >
+          <item.icon size={14} className={active ? "text-accent-blue" : "text-text-muted/70"} />
+          <span className="flex-1">{item.label}</span>
+          {badgeCount > 0 && (
+            <span className="text-[10px] font-semibold text-accent-blue bg-accent-blue/15 rounded-full px-1.5 py-px min-w-[18px] text-center">
+              {badgeCount}
+            </span>
           )}
-        </div>
+        </Link>
       </li>
     );
   }
 
-  const groupActive = ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  const socialGroupActive = SOCIAL_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  const adminGroupActive = ADMIN_ASSIST_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
-  const complianceGroupActive = COMPLIANCE_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  function renderGroup(
+    label: string,
+    icon: React.ElementType,
+    isOpen: boolean,
+    setOpen: (fn: (v: boolean) => boolean) => void,
+    groupActive: boolean,
+    items: { href: string; label: string; icon: React.ElementType }[]
+  ) {
+    const Icon = icon;
+    return (
+      <li>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className={`w-full flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-colors duration-150 ${
+            groupActive ? "text-text-primary" : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
+          }`}
+        >
+          <Icon size={14} className={groupActive ? "text-accent-blue" : "text-text-muted/70"} />
+          <span className="flex-1 text-left">{label}</span>
+          {isOpen ? <ChevronDown size={13} className="text-text-muted/50" /> : <ChevronRight size={13} className="text-text-muted/50" />}
+        </button>
+        {isOpen && (
+          <ul className="mt-0.5 space-y-px border-l border-white/[0.06] ml-4">
+            {items.map((item) => renderNavItem(item, true))}
+          </ul>
+        )}
+      </li>
+    );
+  }
+
+  const onboardingActive = ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const socialActive = SOCIAL_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const adminActive = ADMIN_ASSIST_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const complianceActive = COMPLIANCE_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   const content = (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="flex items-center justify-between px-5 py-2 border-b border-white/[0.06]">
-        <div className="overflow-hidden h-10 flex items-center">
-          <Image src="/logo.png" alt="Axiploy" width={400} height={120} className="h-44 w-auto object-contain scale-[1.1] origin-left" />
+      <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06]">
+        <div className="overflow-hidden h-9 flex items-center">
+          <Image src="/logo.png" alt="Axiploy" width={400} height={120} className="h-40 w-auto object-contain scale-[1.1] origin-left" />
         </div>
         <button onClick={onClose} className="lg:hidden text-text-muted hover:text-text-primary">
           <X size={18} />
@@ -172,123 +195,64 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 overflow-y-auto">
-        <p className="text-text-muted/50 text-[10px] font-semibold tracking-widest uppercase px-3 mb-3">
-          Portal
-        </p>
-        <ul className="space-y-0.5">
-          {mainNavItems.map((item, idx) => (
-            <div key={item.href}>
-              {renderNavItem(item)}
-              {idx === 0 && <div className="my-2 border-t border-white/[0.06]" />}
-            </div>
-          ))}
+      <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
+        {/* Ask Axiploy — pinned */}
+        <button
+          onClick={() => { onClose(); onAskToggle(); }}
+          className="w-full flex items-center gap-2.5 px-2.5 py-[7px] mb-2 rounded-lg text-[13px] font-medium text-accent-blue border border-accent-blue/15 bg-accent-blue/[0.06] hover:bg-accent-blue/[0.12] transition-colors duration-150"
+        >
+          <MessageSquare size={14} />
+          <span className="flex-1 text-left">Ask Axiploy</span>
+          <Sparkles size={12} className="text-accent-cyan/70" />
+        </button>
 
-          {/* AI Onboarding group — only shown if client has onboarding package */}
-          {hasOnboarding && (
-            <li>
-              <button
-                onClick={() => setOnboardingOpen((v) => !v)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                  groupActive
-                    ? "text-accent-blue"
-                    : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
-                }`}
-              >
-                <FolderOpen size={16} className={groupActive ? "text-accent-blue" : "text-text-muted"} />
-                <span className="flex-1 text-left">AI Onboarding</span>
-                {pendingCount > 0 && !onboardingOpen && (
-                  <span className="bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                    {pendingCount}
-                  </span>
-                )}
-                {onboardingOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              {onboardingOpen && (
-                <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
-                  {onboardingNavItems.map((item) => renderNavItem(item, true))}
-                </ul>
-              )}
-            </li>
-          )}
+        <ul className="space-y-px">
+          {mainNavItems.slice(0, 2).map((item) => renderNavItem(item))}
 
-          {/* AI Admin group — only shown if client has admin package */}
-          {hasAdmin && (
-            <li>
-              <button
-                onClick={() => setAdminOpen((v) => !v)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                  adminGroupActive ? "text-accent-blue" : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
-                }`}
-              >
-                <ClipboardList size={16} className={adminGroupActive ? "text-accent-blue" : "text-text-muted"} />
-                <span className="flex-1 text-left">AI Admin</span>
-                {adminOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              {adminOpen && (
-                <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
-                  {adminNavItems.map((item) => renderNavItem(item, true))}
-                </ul>
-              )}
-            </li>
-          )}
+          <div className="my-2 border-t border-white/[0.05]" />
 
-          {/* AI Compliance group */}
-          {hasCompliance && (
-            <li>
-              <button
-                onClick={() => setComplianceOpen((v) => !v)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                  complianceGroupActive ? "text-accent-blue" : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
-                }`}>
-                <Shield size={16} className={complianceGroupActive ? "text-accent-blue" : "text-text-muted"} />
-                <span className="flex-1 text-left">AI Compliance</span>
-                {complianceOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              {complianceOpen && (
-                <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
-                  {complianceNavItems.map((item) => renderNavItem(item, true))}
-                </ul>
-              )}
-            </li>
-          )}
+          {/* Agent workspaces */}
+          {hasAdmin && renderGroup("AI Admin", ClipboardList, adminOpen, setAdminOpen, adminActive, adminNavItems)}
+          {hasOnboarding && renderGroup("AI Onboarding", FolderOpen, onboardingOpen, setOnboardingOpen, onboardingActive, onboardingNavItems)}
+          {hasSocial && renderGroup("AI Social", Share2, socialOpen, setSocialOpen, socialActive, socialNavItems)}
+          {hasCompliance && renderGroup("AI Compliance", Shield, complianceOpen, setComplianceOpen, complianceActive, complianceNavItems)}
 
-          {/* AI Social group — only shown if client has social media package */}
-          {hasSocial && (
-            <li>
-              <button
-                onClick={() => setSocialOpen((v) => !v)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
-                  socialGroupActive
-                    ? "text-accent-blue"
-                    : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
-                }`}
-              >
-                <Share2 size={16} className={socialGroupActive ? "text-accent-blue" : "text-text-muted"} />
-                <span className="flex-1 text-left">AI Social</span>
-                {socialOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              {socialOpen && (
-                <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
-                  {socialNavItems.map((item) => renderNavItem(item, true))}
-                </ul>
-              )}
-            </li>
-          )}
+          <div className="my-2 border-t border-white/[0.05]" />
+
+          {mainNavItems.slice(2).map((item) => renderNavItem(item))}
         </ul>
       </nav>
 
-      {/* Footer */}
-      <div className="px-4 py-4 border-t border-white/[0.06]">
-        <p className="text-text-muted/40 text-xs text-center">Axiploy Portal · MVP</p>
-      </div>
+      {/* AI employee roster */}
+      {agents.length > 0 && (
+        <div className="px-4 py-3 border-t border-white/[0.06]">
+          <p className="text-[10px] font-semibold tracking-widest uppercase text-text-muted/40 mb-2">
+            AI Employees
+          </p>
+          <div className="space-y-1.5">
+            {agents.map((a) => (
+              <Link key={a.type} href="/portal/workforce" onClick={onClose} className="flex items-center gap-2 group">
+                <AgentAvatar type={a.type} size={18} working={a.working} />
+                <span className="text-[11px] text-text-muted group-hover:text-text-primary transition-colors truncate">
+                  {a.name}
+                </span>
+                {a.working ? (
+                  <span className="text-[9px] text-emerald-400 ml-auto shrink-0">working</span>
+                ) : a.status !== "Active" ? (
+                  <span className="text-[9px] text-text-muted/40 ml-auto shrink-0">{a.status.toLowerCase()}</span>
+                ) : null}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 shrink-0 bg-surface border-r border-white/[0.06] h-screen sticky top-0">
+      <aside className="hidden lg:flex flex-col w-60 shrink-0 bg-surface border-r border-white/[0.06] h-screen sticky top-0">
         {content}
       </aside>
 
