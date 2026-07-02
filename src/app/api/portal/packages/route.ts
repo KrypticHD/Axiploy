@@ -25,5 +25,6 @@ export async function GET(req: NextRequest) {
     admin: types.includes("admin"),
     growth: types.includes("growth"),
     social: types.includes("social"),
+    compliance: types.includes("compliance"),
   });
 }

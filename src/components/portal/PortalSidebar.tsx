@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Bot, UserCheck, CheckSquare,
   BarChart2, Activity, FilePlus, Settings, X, MessageSquare,
   Bell, BookOpen, Mail, GitBranch, LifeBuoy, ChevronDown, ChevronRight, FolderOpen,
-  Sparkles, Calendar, Share2, ClipboardList, ListTodo, Inbox, FileText, LayoutGrid,
+  Sparkles, Calendar, Share2, ClipboardList, ListTodo, Inbox, FileText, LayoutGrid, Shield,
 } from "lucide-react";
 
 const mainNavItems = [
@@ -52,6 +52,12 @@ const adminNavItems = [
 
 const ADMIN_ASSIST_PATHS = ["/portal/admin-assist"];
 
+const complianceNavItems = [
+  { href: "/portal/compliance", label: "Compliance Register", icon: Shield },
+];
+
+const COMPLIANCE_PATHS = ["/portal/compliance"];
+
 interface PortalSidebarProps {
   open: boolean;
   onClose: () => void;
@@ -67,6 +73,8 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   const [socialOpen, setSocialOpen] = useState(false);
   const [hasAdmin, setHasAdmin] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [hasCompliance, setHasCompliance] = useState(false);
+  const [complianceOpen, setComplianceOpen] = useState(false);
 
   useEffect(() => {
     if (ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
@@ -77,6 +85,9 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
     }
     if (ADMIN_ASSIST_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
       setAdminOpen(true);
+    }
+    if (COMPLIANCE_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+      setComplianceOpen(true);
     }
   }, [pathname]);
 
@@ -95,6 +106,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
         setHasOnboarding(!!d.onboarding);
         setHasSocial(!!d.social);
         setHasAdmin(!!d.admin);
+        setHasCompliance(!!d.compliance);
       })
       .catch(() => {});
   }, []);
@@ -145,6 +157,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   const groupActive = ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const socialGroupActive = SOCIAL_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const adminGroupActive = ADMIN_ASSIST_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const complianceGroupActive = COMPLIANCE_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   const content = (
     <div className="flex flex-col h-full">
@@ -215,6 +228,26 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
               {adminOpen && (
                 <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
                   {adminNavItems.map((item) => renderNavItem(item, true))}
+                </ul>
+              )}
+            </li>
+          )}
+
+          {/* AI Compliance group */}
+          {hasCompliance && (
+            <li>
+              <button
+                onClick={() => setComplianceOpen((v) => !v)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                  complianceGroupActive ? "text-accent-blue" : "text-text-muted hover:text-text-primary hover:bg-white/[0.04]"
+                }`}>
+                <Shield size={16} className={complianceGroupActive ? "text-accent-blue" : "text-text-muted"} />
+                <span className="flex-1 text-left">AI Compliance</span>
+                {complianceOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+              {complianceOpen && (
+                <ul className="mt-0.5 space-y-0.5 border-l border-white/[0.06] ml-5">
+                  {complianceNavItems.map((item) => renderNavItem(item, true))}
                 </ul>
               )}
             </li>

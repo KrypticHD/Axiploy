@@ -94,6 +94,9 @@ export default async function DashboardPage() {
           const rate = tasks > 0 ? Math.round((spApproved / tasks) * 100) : 100;
           return { tasks, hours, rate, label: "Posts Generated" };
         }
+        if (type === "compliance") {
+          return { tasks: 0, hours: 0, rate: 100, label: "Items Tracked" };
+        }
         return { tasks: 0, hours: 0, rate: 100, label: "Tasks" };
       };
 

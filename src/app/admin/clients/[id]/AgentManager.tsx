@@ -14,6 +14,7 @@ const AGENT_TEMPLATES = [
   { type: "admin", name: "AI Admin Assistant", description: "Scheduling, reporting, data entry, communications.", icon: ClipboardList },
   { type: "growth", name: "AI Growth Assistant", description: "Lead follow-up, client engagement, pipeline management.", icon: TrendingUp },
   { type: "social", name: "AI Social Media Manager", description: "Generate platform posts from photos, manage content calendar, monitor engagement.", icon: Share2 },
+  { type: "compliance", name: "AI Compliance Assistant", description: "Track licences, certifications, insurance and policies. Automated reminders before anything expires.", icon: AlertTriangle },
 ];
 
 const DEFAULT_DOCS = ["Employment Contract", "Tax File Number Declaration", "Right to Work", "Bank Details", "Emergency Contact Form"];
@@ -845,7 +846,7 @@ export default function AgentManager({
   }
 
   const typeIcons: Record<string, React.FC<{ size?: number; className?: string }>> = {
-    onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp, social: Share2,
+    onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp, social: Share2, compliance: AlertTriangle,
   };
 
   return (
@@ -926,7 +927,7 @@ export default function AgentManager({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {(agent.type === "onboarding" || agent.type === "social" || agent.type === "admin") && (
+                      {(agent.type === "onboarding" || agent.type === "social" || agent.type === "admin" || agent.type === "compliance") && (
                         <button onClick={() => setConfiguringId(isConfiguring ? null : agent.id)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                             isConfiguring ? "bg-accent-blue/20 border-accent-blue/30 text-accent-blue" : "bg-white/[0.04] border-white/[0.10] text-text-muted hover:text-text-primary hover:bg-white/[0.08]"
