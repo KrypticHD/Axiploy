@@ -17,6 +17,7 @@ export interface GanttDependency {
   predecessor_task_id: string;
   successor_task_id: string;
   link_type: "FS" | "SS" | "FF" | "SF";
+  lag_days?: number;
 }
 
 export interface GanttGroup {
@@ -64,7 +65,7 @@ interface DragState {
 }
 
 export default function GanttGrid({
-  groups, dependencies, viewStart, windowDays, onTaskClick, onTaskDatesChange, showGroupHeaders = true,
+  groups, dependencies, viewStart, windowDays, onTaskClick, onTaskDatesChange, showGroupHeaders = true, hideLabelColumn = false,
 }: {
   groups: GanttGroup[];
   dependencies: GanttDependency[];
@@ -73,7 +74,9 @@ export default function GanttGrid({
   onTaskClick: (task: GanttTask) => void;
   onTaskDatesChange: (taskId: string, newStart: string, newEnd: string) => void;
   showGroupHeaders?: boolean;
+  hideLabelColumn?: boolean;
 }) {
+  const labelWidth = hideLabelColumn ? 0 : LABEL_WIDTH;
   const [drag, setDrag] = useState<DragState | null>(null);
   const [dragPreview, setDragPreview] = useState<{ taskId: string; start_date: string; end_date: string } | null>(null);
 
@@ -160,10 +163,12 @@ export default function GanttGrid({
 
   return (
     <div className="overflow-x-auto">
-      <div style={{ minWidth: LABEL_WIDTH + windowDays * DAY_WIDTH }}>
+      <div style={{ minWidth: labelWidth + windowDays * DAY_WIDTH }}>
         {/* Day header */}
         <div className="flex border-b border-white/[0.06] sticky top-0 bg-surface z-10" style={{ height: HEADER_HEIGHT }}>
-          <div className="shrink-0 px-3 py-2 text-[11px] font-semibold text-text-muted uppercase tracking-wide" style={{ width: LABEL_WIDTH }}>Project / Task</div>
+          {!hideLabelColumn && (
+            <div className="shrink-0 px-3 py-2 text-[11px] font-semibold text-text-muted uppercase tracking-wide" style={{ width: labelWidth }}>Project / Task</div>
+          )}
           {days.map((d) => {
             const isToday = toISODate(d) === toISODate(today);
             const isWeekend = d.getDay() === 0 || d.getDay() === 6;
@@ -184,7 +189,7 @@ export default function GanttGrid({
         <div className="relative">
           <svg
             className="absolute top-0 pointer-events-none z-10"
-            style={{ left: LABEL_WIDTH, width: windowDays * DAY_WIDTH, height: totalHeight }}
+            style={{ left: labelWidth, width: windowDays * DAY_WIDTH, height: totalHeight }}
           >
             {dependencies.map((dep) => {
               const pred = taskById.get(dep.predecessor_task_id);
@@ -227,11 +232,13 @@ export default function GanttGrid({
             if (row.type === "group") {
               return (
                 <div key={`g:${row.group.id}`} className="flex border-b border-white/[0.04] bg-white/[0.015]" style={{ height: GROUP_ROW_HEIGHT }}>
-                  <div className="shrink-0 px-3 flex items-center text-[12px] font-semibold text-text-primary truncate" style={{ width: LABEL_WIDTH }}>
-                    {row.group.href ? (
-                      <Link href={row.group.href} className="hover:text-accent-cyan transition-colors">{row.group.label}</Link>
-                    ) : row.group.label}
-                  </div>
+                  {!hideLabelColumn && (
+                    <div className="shrink-0 px-3 flex items-center text-[12px] font-semibold text-text-primary truncate" style={{ width: labelWidth }}>
+                      {row.group.href ? (
+                        <Link href={row.group.href} className="hover:text-accent-cyan transition-colors">{row.group.label}</Link>
+                      ) : row.group.label}
+                    </div>
+                  )}
                   <div style={{ width: windowDays * DAY_WIDTH }} className="shrink-0" />
                 </div>
               );
@@ -244,10 +251,12 @@ export default function GanttGrid({
 
             return (
               <div key={task.id} className="flex border-b border-white/[0.04] relative" style={{ height: ROW_HEIGHT }}>
-                <div className="shrink-0 px-3 py-2 text-[11px] text-text-muted truncate flex items-center gap-1.5" style={{ width: LABEL_WIDTH }}>
-                  {(task.assignments?.length || 0) > 0 && <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan shrink-0" />}
-                  {task.name}
-                </div>
+                {!hideLabelColumn && (
+                  <div className="shrink-0 px-3 py-2 text-[11px] text-text-muted truncate flex items-center gap-1.5" style={{ width: labelWidth }}>
+                    {(task.assignments?.length || 0) > 0 && <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan shrink-0" />}
+                    {task.name}
+                  </div>
+                )}
                 <div className="relative shrink-0" style={{ width: windowDays * DAY_WIDTH }}>
                   {visible && (
                     <div

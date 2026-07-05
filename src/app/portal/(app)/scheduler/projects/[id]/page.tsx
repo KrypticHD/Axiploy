@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import StatusPill from "@/components/portal/StatusPill";
-import { ArrowLeft, MapPin, DollarSign, User, Calendar, ListTodo, FileText, CalendarRange } from "lucide-react";
-import TaskList from "./TaskList";
+import { ArrowLeft, MapPin, DollarSign, User, Calendar, FileText, CalendarRange } from "lucide-react";
 import DocumentsTab from "./DocumentsTab";
 import ProjectTimeline from "./ProjectTimeline";
 import type { GanttDependency } from "../../GanttGrid";
@@ -52,7 +51,7 @@ export default function ProjectDetailPage() {
   const [documents, setDocuments] = useState<{ id: string; name: string; file_url: string; file_type: string | null; created_at: string }[]>([]);
   const [dependencies, setDependencies] = useState<GanttDependency[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"timeline" | "tasks" | "documents">("timeline");
+  const [tab, setTab] = useState<"timeline" | "documents">("timeline");
 
   function load() {
     fetch(`/api/portal/scheduler/projects/${id}`)
@@ -141,12 +140,6 @@ export default function ProjectDetailPage() {
           <CalendarRange size={13} /> Timeline
         </button>
         <button
-          onClick={() => setTab("tasks")}
-          className={`flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 transition-colors ${tab === "tasks" ? "border-accent-blue text-text-primary" : "border-transparent text-text-muted hover:text-text-primary"}`}
-        >
-          <ListTodo size={13} /> Tasks
-        </button>
-        <button
           onClick={() => setTab("documents")}
           className={`flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 transition-colors ${tab === "documents" ? "border-accent-blue text-text-primary" : "border-transparent text-text-muted hover:text-text-primary"}`}
         >
@@ -156,9 +149,6 @@ export default function ProjectDetailPage() {
 
       {tab === "timeline" && (
         <ProjectTimeline projectId={id} tasks={tasks} dependencies={dependencies} onChange={load} />
-      )}
-      {tab === "tasks" && (
-        <TaskList projectId={id} projectStart={project.start_date} projectEnd={project.end_date} tasks={tasks} onChange={load} />
       )}
       {tab === "documents" && (
         <DocumentsTab projectId={id} documents={documents} onChange={load} />
