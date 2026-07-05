@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Bot, UserCheck, BarChart2, Activity, Settings,
   BookOpen, Mail, GitBranch, LifeBuoy, Inbox, Shield, Sparkles,
   Search, MessageSquare, FilePlus, Calendar, ListTodo, CheckSquare, ShieldCheck, ShieldAlert, Users,
+  CalendarDays, FolderKanban, Truck,
 } from "lucide-react";
 
 interface Command {
@@ -41,6 +42,9 @@ export default function CommandPalette({ onAsk }: { onAsk: (query?: string) => v
     { label: "Scheduled Posts", href: "/portal/social/posts", icon: Calendar, keywords: "social" },
     { label: "Compliance Register", href: "/portal/compliance", icon: Shield, keywords: "licences insurance expiry" },
     { label: "Safety Register", href: "/portal/safety", icon: ShieldAlert, keywords: "incidents near miss corrective actions" },
+    { label: "Scheduler Timeline", href: "/portal/scheduler", icon: CalendarDays, keywords: "gantt schedule roster" },
+    { label: "Projects", href: "/portal/scheduler/projects", icon: FolderKanban, keywords: "jobs scheduler" },
+    { label: "Equipment", href: "/portal/scheduler/equipment", icon: Truck, keywords: "plant machinery scheduler" },
     { label: "Workflow Health", href: "/portal/workflows", icon: GitBranch },
     { label: "Reports", href: "/portal/reports", icon: BarChart2 },
     { label: "Activity", href: "/portal/activity", icon: Activity, keywords: "log history" },

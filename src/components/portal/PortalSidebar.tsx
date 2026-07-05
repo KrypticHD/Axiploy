@@ -9,7 +9,7 @@ import {
   BarChart2, Activity, FilePlus, Settings, X, MessageSquare,
   BookOpen, Mail, GitBranch, LifeBuoy, ChevronDown, ChevronRight, FolderOpen,
   Sparkles, Calendar, Share2, ClipboardList, ListTodo, Inbox, FileText, LayoutGrid, Shield,
-  ShieldCheck, ShieldAlert, Users,
+  ShieldCheck, ShieldAlert, Users, CalendarDays, Truck,
 } from "lucide-react";
 import AgentAvatar from "./AgentAvatar";
 
@@ -67,6 +67,14 @@ const safetyNavItems = [
 
 const SAFETY_PATHS = ["/portal/safety"];
 
+const schedulerNavItems = [
+  { href: "/portal/scheduler", label: "Timeline", icon: CalendarDays },
+  { href: "/portal/scheduler/projects", label: "Projects", icon: FolderOpen },
+  { href: "/portal/scheduler/equipment", label: "Equipment", icon: Truck },
+];
+
+const SCHEDULER_PATHS = ["/portal/scheduler"];
+
 interface Agent {
   type: string;
   name: string;
@@ -93,6 +101,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   const [complianceOpen, setComplianceOpen] = useState(false);
   const [hasSafety, setHasSafety] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
 
   useEffect(() => {
@@ -110,6 +119,9 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
     }
     if (SAFETY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
       setSafetyOpen(true);
+    }
+    if (SCHEDULER_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+      setSchedulerOpen(true);
     }
   }, [pathname]);
 
@@ -197,6 +209,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   const adminActive = ADMIN_ASSIST_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const complianceActive = COMPLIANCE_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const safetyActive = SAFETY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const schedulerActive = SCHEDULER_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   const content = (
     <div className="flex flex-col h-full">
@@ -224,6 +237,11 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
 
         <ul className="space-y-px">
           {mainNavItems.slice(0, 2).map((item) => renderNavItem(item))}
+
+          <div className="my-2 border-t border-white/[0.05]" />
+
+          {/* Scheduler — shared platform feature, not agent-gated */}
+          {renderGroup("Scheduler", CalendarDays, schedulerOpen, setSchedulerOpen, schedulerActive, schedulerNavItems)}
 
           <div className="my-2 border-t border-white/[0.05]" />
 

@@ -39,6 +39,9 @@ const PAGE_LABELS: [string, string][] = [
   ["/portal/social", "Post Studio"],
   ["/portal/compliance", "Compliance Register"],
   ["/portal/safety", "Safety Register"],
+  ["/portal/scheduler/projects", "Projects"],
+  ["/portal/scheduler/equipment", "Equipment"],
+  ["/portal/scheduler", "Timeline"],
   ["/portal/notifications", "Notifications"],
   ["/portal/ask", "Ask Axiploy"],
 ];
