@@ -19,13 +19,15 @@ export async function GET(req: NextRequest) {
 
   const supabase = supabaseAdmin();
 
-  const [incidentsRes, actionsRes, clientRes] = await Promise.all([
+  const [incidentsRes, actionsRes, clientRes, staffRes] = await Promise.all([
     supabase.from("safety_incidents").select("*").eq("client_id", clientId).order("created_at", { ascending: false }),
     supabase.from("corrective_actions").select("*").eq("client_id", clientId).order("due_date", { ascending: true }),
     supabase.from("clients").select("report_token").eq("id", clientId).single(),
+    supabase.from("onboarding").select("id, employee_name").eq("client_id", clientId).neq("status", "Cancelled").order("employee_name"),
   ]);
 
-  const incidents = incidentsRes.data || [];
+  const staffById = new Map((staffRes.data || []).map((s) => [s.id, s.employee_name]));
+  const incidents = (incidentsRes.data || []).map((i) => ({ ...i, staffName: i.staff_id ? staffById.get(i.staff_id) || null : null }));
   const actions = actionsRes.data || [];
 
   const openIncidents = incidents.filter((i) => i.status === "new" || i.status === "investigating").length;
@@ -48,6 +50,7 @@ export async function GET(req: NextRequest) {
     overdueActions,
     daysSinceLastIncident,
     reportToken: clientRes.data?.report_token || null,
+    staffOptions: staffRes.data || [],
   });
 }
 

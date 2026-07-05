@@ -12,6 +12,8 @@ import {
 interface Incident {
   id: string;
   reported_by_name: string | null;
+  staff_id?: string | null;
+  staffName?: string | null;
   description: string;
   photo_url: string | null;
   location: string | null;
@@ -48,6 +50,8 @@ export default function SafetyPage() {
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionForm, setActionForm] = useState<{ incidentId: string; description: string; assignedTo: string; assignedEmail: string; dueDate: string } | null>(null);
+  const [staffOptions, setStaffOptions] = useState<{ id: string; employee_name: string }[]>([]);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
 
   function load() {
     fetch("/api/portal/safety/incidents")
@@ -60,8 +64,19 @@ export default function SafetyPage() {
         setOverdueActions(d.overdueActions || 0);
         setDaysSince(d.daysSinceLastIncident);
         setReportToken(d.reportToken);
+        setStaffOptions(d.staffOptions || []);
       })
       .finally(() => setLoading(false));
+  }
+
+  async function linkStaff(incidentId: string, staffId: string) {
+    await fetch("/api/portal/safety/incidents", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: incidentId, staff_id: staffId || null }),
+    });
+    setLinkingId(null);
+    load();
   }
 
   useEffect(() => { load(); }, []);
@@ -195,6 +210,25 @@ export default function SafetyPage() {
                         {incident.reported_by_name && (
                           <p className="text-[11px] text-text-muted/60 mt-2">Reported by {incident.reported_by_name}</p>
                         )}
+                        <div className="flex items-center gap-2 mt-2">
+                          {incident.staffName ? (
+                            <span className="text-[11px] text-accent-cyan">Linked to {incident.staffName}</span>
+                          ) : linkingId === incident.id ? (
+                            <select
+                              autoFocus
+                              onChange={(e) => linkStaff(incident.id, e.target.value)}
+                              onBlur={() => setLinkingId(null)}
+                              className="bg-white/[0.04] border border-white/[0.1] rounded-lg px-2 py-1 text-[11px] text-text-primary focus:outline-none focus:border-accent-blue/50"
+                            >
+                              <option value="">Select staff member…</option>
+                              {staffOptions.map((s) => <option key={s.id} value={s.id}>{s.employee_name}</option>)}
+                            </select>
+                          ) : (
+                            <button onClick={() => setLinkingId(incident.id)} className="text-[11px] text-text-muted hover:text-accent-cyan transition-colors">
+                              Link to staff member
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {incident.photo_url && (

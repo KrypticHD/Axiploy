@@ -23,6 +23,7 @@ const PAGE_LABELS: [string, string][] = [
   ["/portal/templates", "Email Templates"],
   ["/portal/support", "Support"],
   ["/portal/settings", "Settings"],
+  ["/portal/staff", "Staff Directory"],
   ["/portal/onboarding", "Onboarding"],
   ["/portal/site-readiness", "Site Readiness"],
   ["/portal/forms/new-employee", "New Employee"],

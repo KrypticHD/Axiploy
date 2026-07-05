@@ -9,12 +9,19 @@ interface ComplianceItem {
   category: string;
   description: string | null;
   assigned_to: string | null;
+  staff_id?: string | null;
+  staffName?: string | null;
   expiry_date: string | null;
   reminder_days: number[];
   notes: string | null;
   status: string;
   daysUntilExpiry: number | null;
   created_at: string;
+}
+
+interface StaffOption {
+  id: string;
+  employee_name: string;
 }
 
 const CATEGORIES = ["Licence", "Certification", "Insurance", "WHS Policy", "Training", "Registration", "Contract", "Other"];
@@ -57,8 +64,15 @@ export default function CompliancePage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<ComplianceItem>>({});
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    fetch("/api/portal/staff")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.staff) setStaffOptions(d.staff.map((s: { id: string; employee_name: string }) => ({ id: s.id, employee_name: s.employee_name }))); })
+      .catch(() => {});
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -188,9 +202,22 @@ export default function CompliancePage() {
             </div>
             <div>
               <label className="text-xs text-text-muted mb-1 block">Assigned To</label>
-              <input value={form.assigned_to || ""} onChange={(e) => setForm((p) => ({ ...p, assigned_to: e.target.value }))}
-                placeholder="e.g. Jane Smith"
-                className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-[13px] placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+              {staffOptions.length > 0 ? (
+                <select
+                  value={form.staff_id || ""}
+                  onChange={(e) => {
+                    const staff = staffOptions.find((s) => s.id === e.target.value);
+                    setForm((p) => ({ ...p, staff_id: e.target.value || null, assigned_to: staff?.employee_name || p.assigned_to }));
+                  }}
+                  className="w-full px-3 py-2 rounded-xl bg-[#1c1c2e] text-white text-sm border border-white/[0.10] focus:outline-none focus:border-accent-blue/40"
+                >
+                  <option value="">— No specific staff member —</option>
+                  {staffOptions.map((s) => <option key={s.id} value={s.id}>{s.employee_name}</option>)}
+                </select>
+              ) : null}
+              <input value={form.staff_id ? "" : (form.assigned_to || "")} disabled={!!form.staff_id} onChange={(e) => setForm((p) => ({ ...p, assigned_to: e.target.value }))}
+                placeholder="Or type a name (e.g. company-wide item)"
+                className="w-full mt-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-[13px] placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40 disabled:opacity-40" />
             </div>
             <div className="sm:col-span-2">
               <label className="text-xs text-text-muted mb-1 block">Description / Notes</label>

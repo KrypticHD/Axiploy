@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabaseAdmin()
     .from("compliance_items")
-    .select("*")
+    .select("*, staff:staff_id(employee_name)")
     .eq("client_id", clientId)
     .order("expiry_date", { ascending: true, nullsFirst: false });
 
@@ -32,14 +32,16 @@ export async function GET(req: NextRequest) {
   today.setHours(0, 0, 0, 0);
 
   const items = (data || []).map((item) => {
-    if (!item.expiry_date) return { ...item, status: "no_expiry", daysUntilExpiry: null };
+    const staffName = (item.staff as unknown as { employee_name?: string } | null)?.employee_name || null;
+    const base = { ...item, staffName };
+    if (!item.expiry_date) return { ...base, status: "no_expiry", daysUntilExpiry: null };
     const expiry = new Date(item.expiry_date);
     const diff = Math.floor((expiry.getTime() - today.getTime()) / 86400000);
     let computedStatus = "current";
     if (diff < 0) computedStatus = "expired";
     else if (diff <= 7) computedStatus = "critical";
     else if (diff <= 30) computedStatus = "expiring_soon";
-    return { ...item, status: computedStatus, daysUntilExpiry: diff };
+    return { ...base, status: computedStatus, daysUntilExpiry: diff };
   });
 
   return NextResponse.json({ items });
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
   if (!clientId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
   const body = await req.json();
-  const { title, category, description, assigned_to, expiry_date, reminder_days, notes } = body;
+  const { title, category, description, assigned_to, staff_id, expiry_date, reminder_days, notes } = body;
 
   if (!title) return NextResponse.json({ error: "Title required" }, { status: 400 });
 
@@ -62,6 +64,7 @@ export async function POST(req: NextRequest) {
       category: category || "Other",
       description,
       assigned_to,
+      staff_id: staff_id || null,
       expiry_date: expiry_date || null,
       reminder_days: reminder_days || [30, 14, 7],
       notes,
