@@ -41,7 +41,7 @@ const PAGE_LABELS: [string, string][] = [
   ["/portal/safety", "Safety Register"],
   ["/portal/scheduler/projects", "Projects"],
   ["/portal/scheduler/equipment", "Equipment"],
-  ["/portal/scheduler", "Timeline"],
+  ["/portal/scheduler", "Portfolio Timeline"],
   ["/portal/notifications", "Notifications"],
   ["/portal/ask", "Ask Axiploy"],
 ];

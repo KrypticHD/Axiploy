@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import StatusPill from "@/components/portal/StatusPill";
-import { ArrowLeft, MapPin, DollarSign, User, Calendar, ListTodo, FileText } from "lucide-react";
+import { ArrowLeft, MapPin, DollarSign, User, Calendar, ListTodo, FileText, CalendarRange } from "lucide-react";
 import TaskList from "./TaskList";
 import DocumentsTab from "./DocumentsTab";
+import ProjectTimeline from "./ProjectTimeline";
+import type { GanttDependency } from "../../GanttGrid";
 
 interface Project {
   id: string;
@@ -48,8 +50,9 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [documents, setDocuments] = useState<{ id: string; name: string; file_url: string; file_type: string | null; created_at: string }[]>([]);
+  const [dependencies, setDependencies] = useState<GanttDependency[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"tasks" | "documents">("tasks");
+  const [tab, setTab] = useState<"timeline" | "tasks" | "documents">("timeline");
 
   function load() {
     fetch(`/api/portal/scheduler/projects/${id}`)
@@ -59,6 +62,7 @@ export default function ProjectDetailPage() {
         setProject(d.project);
         setTasks(d.tasks || []);
         setDocuments(d.documents || []);
+        setDependencies(d.dependencies || []);
       })
       .finally(() => setLoading(false));
   }
@@ -131,6 +135,12 @@ export default function ProjectDetailPage() {
       {/* Tabs */}
       <div className="flex items-center gap-1 border-b border-white/[0.06]">
         <button
+          onClick={() => setTab("timeline")}
+          className={`flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 transition-colors ${tab === "timeline" ? "border-accent-blue text-text-primary" : "border-transparent text-text-muted hover:text-text-primary"}`}
+        >
+          <CalendarRange size={13} /> Timeline
+        </button>
+        <button
           onClick={() => setTab("tasks")}
           className={`flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 transition-colors ${tab === "tasks" ? "border-accent-blue text-text-primary" : "border-transparent text-text-muted hover:text-text-primary"}`}
         >
@@ -144,6 +154,9 @@ export default function ProjectDetailPage() {
         </button>
       </div>
 
+      {tab === "timeline" && (
+        <ProjectTimeline projectId={id} tasks={tasks} dependencies={dependencies} onChange={load} />
+      )}
       {tab === "tasks" && (
         <TaskList projectId={id} projectStart={project.start_date} projectEnd={project.end_date} tasks={tasks} onChange={load} />
       )}

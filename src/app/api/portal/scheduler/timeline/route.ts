@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   const projectIds = (projects || []).map((p) => p.id);
 
   if (projectIds.length === 0) {
-    return NextResponse.json({ projects: [], tasks: [] });
+    return NextResponse.json({ projects: [], tasks: [], dependencies: [] });
   }
 
   let tasksQuery = supabase
@@ -55,5 +55,10 @@ export async function GET(req: NextRequest) {
     assignments: (assignments || []).filter((a) => a.task_id === t.id),
   }));
 
-  return NextResponse.json({ projects: projects || [], tasks: tasksWithAssignments });
+  const { data: dependencies } = await supabase
+    .from("task_dependencies")
+    .select("*")
+    .in("project_id", projectIds);
+
+  return NextResponse.json({ projects: projects || [], tasks: tasksWithAssignments, dependencies: dependencies || [] });
 }

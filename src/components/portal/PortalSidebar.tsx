@@ -68,7 +68,7 @@ const safetyNavItems = [
 const SAFETY_PATHS = ["/portal/safety"];
 
 const schedulerNavItems = [
-  { href: "/portal/scheduler", label: "Timeline", icon: CalendarDays },
+  { href: "/portal/scheduler", label: "Portfolio Timeline", icon: CalendarDays },
   { href: "/portal/scheduler/projects", label: "Projects", icon: FolderOpen },
   { href: "/portal/scheduler/equipment", label: "Equipment", icon: Truck },
 ];

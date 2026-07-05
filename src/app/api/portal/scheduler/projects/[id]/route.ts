@@ -34,10 +34,17 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     assignments: (assignmentsRes.data || []).filter((a) => a.task_id === t.id),
   }));
 
+  const { data: dependencies } = await supabaseAdmin()
+    .from("task_dependencies")
+    .select("*")
+    .eq("project_id", id)
+    .eq("client_id", clientId);
+
   return NextResponse.json({
     project: projectRes.data,
     tasks,
     documents: documentsRes.data || [],
+    dependencies: dependencies || [],
   });
 }
 

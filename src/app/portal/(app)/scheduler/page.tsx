@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, CalendarDays, X, FolderKanban, Plus } from "lucide-react";
 import AssignResourcePanel from "./projects/[id]/AssignResourcePanel";
 import type { ProjectTask } from "./projects/[id]/page";
+import GanttGrid, { STATUS_COLOR, DAY_MS, type GanttGroup, type GanttDependency } from "./GanttGrid";
 
 interface Project {
   id: string;
@@ -12,24 +13,7 @@ interface Project {
   status: string;
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  not_started: "bg-white/15",
-  in_progress: "bg-accent-blue",
-  complete: "bg-emerald-500",
-  blocked: "bg-red-500",
-};
-
-const DAY_MS = 86400000;
 const WINDOW_DAYS = 28;
-const DAY_WIDTH = 34;
-
-function toISODate(d: Date): string {
-  return d.toISOString().split("T")[0];
-}
-
-function daysBetween(a: Date, b: Date): number {
-  return Math.round((b.getTime() - a.getTime()) / DAY_MS);
-}
 
 export default function SchedulerTimelinePage() {
   const [viewStart, setViewStart] = useState(() => {
@@ -41,11 +25,12 @@ export default function SchedulerTimelinePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<ProjectTask[]>([]);
   const [taskProjectId, setTaskProjectId] = useState<Record<string, string>>({});
+  const [dependencies, setDependencies] = useState<GanttDependency[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTask, setActiveTask] = useState<ProjectTask | null>(null);
 
+  function toISODate(d: Date): string { return d.toISOString().split("T")[0]; }
   const viewEnd = new Date(viewStart.getTime() + WINDOW_DAYS * DAY_MS);
-  const days = Array.from({ length: WINDOW_DAYS }, (_, i) => new Date(viewStart.getTime() + i * DAY_MS));
 
   const load = useCallback(() => {
     setLoading(true);
@@ -55,6 +40,7 @@ export default function SchedulerTimelinePage() {
         if (!d) return;
         setProjects(d.projects || []);
         setTasks(d.tasks || []);
+        setDependencies(d.dependencies || []);
         const map: Record<string, string> = {};
         for (const t of d.tasks || []) map[t.id] = t.project_id;
         setTaskProjectId(map);
@@ -76,8 +62,23 @@ export default function SchedulerTimelinePage() {
     setViewStart(d);
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  async function handleTaskDatesChange(taskId: string, newStart: string, newEnd: string) {
+    // Optimistic update so the drag feels instant
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, start_date: newStart, end_date: newEnd } : t)));
+    await fetch("/api/portal/scheduler/tasks", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: taskId, start_date: newStart, end_date: newEnd }),
+    });
+    load();
+  }
+
+  const groups: GanttGroup[] = projects.map((p) => ({
+    id: p.id,
+    label: p.name,
+    href: `/portal/scheduler/projects/${p.id}`,
+    tasks: tasks.filter((t) => taskProjectId[t.id] === p.id),
+  }));
 
   return (
     <div className="space-y-4">
@@ -85,9 +86,9 @@ export default function SchedulerTimelinePage() {
         <div>
           <h1 className="font-heading text-xl font-bold text-text-primary flex items-center gap-2">
             <CalendarDays size={19} className="text-accent-cyan" />
-            Timeline
+            Portfolio Timeline
           </h1>
-          <p className="text-text-muted text-[13px] mt-1">Every project and task, visualised across time.</p>
+          <p className="text-text-muted text-[13px] mt-1">Every project and task across your business, visualised across time.</p>
         </div>
         <Link href="/portal/scheduler/projects/new" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-blue hover:bg-accent-blue-light text-white text-[13px] font-medium transition-colors shrink-0">
           <Plus size={14} /> New Project
@@ -111,6 +112,7 @@ export default function SchedulerTimelinePage() {
             </span>
           ))}
         </div>
+        <p className="text-[11px] text-text-muted/50 ml-auto">Drag a bar to move it, drag its edge to resize</p>
       </div>
 
       {loading ? (
@@ -125,80 +127,15 @@ export default function SchedulerTimelinePage() {
           </Link>
         </div>
       ) : (
-        <div className="glass rounded-xl border border-white/[0.06] overflow-x-auto">
-          <div style={{ minWidth: 200 + WINDOW_DAYS * DAY_WIDTH }}>
-            {/* Day header */}
-            <div className="flex border-b border-white/[0.06] sticky top-0 bg-surface z-10">
-              <div className="w-[200px] shrink-0 px-3 py-2 text-[11px] font-semibold text-text-muted uppercase tracking-wide">Project / Task</div>
-              {days.map((d) => {
-                const isToday = toISODate(d) === toISODate(today);
-                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-                return (
-                  <div
-                    key={d.toISOString()}
-                    style={{ width: DAY_WIDTH }}
-                    className={`shrink-0 text-center py-2 text-[10px] border-l border-white/[0.04] ${isToday ? "bg-accent-blue/10 text-accent-blue font-semibold" : isWeekend ? "bg-white/[0.02] text-text-muted/40" : "text-text-muted/60"}`}
-                  >
-                    <div>{d.toLocaleDateString("en-AU", { day: "numeric" })}</div>
-                    <div className="text-[9px]">{d.toLocaleDateString("en-AU", { month: "short" })}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Rows */}
-            {projects.map((project) => {
-              const projectTasks = tasks.filter((t) => taskProjectId[t.id] === project.id);
-              return (
-                <div key={project.id}>
-                  <div className="flex border-b border-white/[0.04] bg-white/[0.015]">
-                    <div className="w-[200px] shrink-0 px-3 py-2 text-[12px] font-semibold text-text-primary truncate">
-                      <Link href={`/portal/scheduler/projects/${project.id}`} className="hover:text-accent-cyan transition-colors">
-                        {project.name}
-                      </Link>
-                    </div>
-                    <div style={{ width: WINDOW_DAYS * DAY_WIDTH }} className="shrink-0" />
-                  </div>
-
-                  {projectTasks.length === 0 ? (
-                    <div className="flex border-b border-white/[0.04]">
-                      <div className="w-[200px] shrink-0 px-3 py-1.5 text-[11px] text-text-muted/40 italic">No tasks</div>
-                      <div style={{ width: WINDOW_DAYS * DAY_WIDTH }} className="shrink-0" />
-                    </div>
-                  ) : (
-                    projectTasks.map((task) => {
-                      const start = new Date(task.start_date);
-                      const end = new Date(task.end_date);
-                      const startOffset = Math.max(0, daysBetween(viewStart, start));
-                      const endOffset = Math.min(WINDOW_DAYS, daysBetween(viewStart, end) + 1);
-                      const span = Math.max(1, endOffset - startOffset);
-                      const visible = endOffset > 0 && startOffset < WINDOW_DAYS;
-
-                      return (
-                        <div key={task.id} className="flex border-b border-white/[0.04] relative" style={{ height: 34 }}>
-                          <div className="w-[200px] shrink-0 px-3 py-2 text-[11px] text-text-muted truncate flex items-center gap-1.5">
-                            {task.assignments.length > 0 && <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan shrink-0" />}
-                            {task.name}
-                          </div>
-                          <div className="relative shrink-0" style={{ width: WINDOW_DAYS * DAY_WIDTH }}>
-                            {visible && (
-                              <button
-                                onClick={() => setActiveTask(task)}
-                                style={{ left: startOffset * DAY_WIDTH, width: span * DAY_WIDTH - 4 }}
-                                className={`absolute top-1 h-6 rounded-md ${STATUS_COLOR[task.status] || "bg-white/15"} hover:opacity-80 transition-opacity text-left px-2 flex items-center overflow-hidden`}
-                              >
-                                <span className="text-[10px] text-white font-medium truncate">{task.name}</span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              );
-            })}
-          </div>
+        <div className="glass rounded-xl border border-white/[0.06]">
+          <GanttGrid
+            groups={groups}
+            dependencies={dependencies}
+            viewStart={viewStart}
+            windowDays={WINDOW_DAYS}
+            onTaskClick={(t) => setActiveTask(tasks.find((pt) => pt.id === t.id) || null)}
+            onTaskDatesChange={handleTaskDatesChange}
+          />
         </div>
       )}
 

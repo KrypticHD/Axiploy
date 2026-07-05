@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { cascadeFromTask } from "@/lib/scheduler-dependencies";
 
 function getClientId(req: NextRequest): string | null {
   const raw = req.cookies.get("axiploy_session")?.value;
@@ -65,7 +66,22 @@ export async function PATCH(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ task: data });
+
+  let shifted: Awaited<ReturnType<typeof cascadeFromTask>> = [];
+  if (updates.start_date || updates.end_date) {
+    shifted = await cascadeFromTask(clientId, id);
+    if (shifted.length) {
+      await supabaseAdmin().from("activity_log").insert({
+        client_id: clientId,
+        digital_employee: "Scheduler",
+        action: `Dependent tasks shifted: ${shifted.map((s) => s.name).join(", ")}`,
+        details: `Triggered by moving "${data.name}"`,
+        status: "success",
+      });
+    }
+  }
+
+  return NextResponse.json({ task: data, shifted });
 }
 
 export async function DELETE(req: NextRequest) {
