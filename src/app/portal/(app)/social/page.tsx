@@ -185,20 +185,20 @@ export default function PostStudioPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-text-primary">Post Studio</h1>
-          <p className="text-text-muted text-sm mt-1">Upload photos, generate platform-specific posts with AI, and approve them for publishing.</p>
+          <h1 className="font-heading text-xl font-semibold text-text-primary">Post Studio</h1>
+          <p className="text-text-muted text-[13px] mt-1">Upload photos, generate platform-specific posts with AI, and approve them for publishing.</p>
         </div>
         <Link href="/portal/social/posts"
-          className="flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors">
+          className="flex items-center gap-1.5 text-[13px] text-text-muted hover:text-text-primary transition-colors">
           View all posts <ChevronRight size={14} />
         </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Photo Library */}
-        <div className="glass rounded-2xl p-5 space-y-4">
+        <div className="glass rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-text-primary">Photo Library</h2>
+            <h2 className="text-[13px] font-semibold text-text-primary">Photo Library</h2>
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
@@ -388,7 +388,7 @@ export default function PostStudioPage() {
               <button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-60">
+                className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-accent-blue text-white text-[13px] font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-60">
                 {generating ? (
                   <><Loader2 size={14} className="animate-spin" /> Generating posts...</>
                 ) : (
@@ -407,14 +407,14 @@ export default function PostStudioPage() {
                 <Sparkles size={20} className="text-accent-blue animate-pulse" />
               </div>
               <p className="text-text-primary font-medium">AI is writing your posts...</p>
-              <p className="text-text-muted text-sm">Generating content for Facebook, Instagram, LinkedIn and Twitter</p>
+              <p className="text-text-muted text-[13px]">Generating content for Facebook, Instagram, LinkedIn and Twitter</p>
             </div>
           )}
 
           {!generating && drafts.length === 0 && (
             <div className="glass rounded-2xl p-8 flex flex-col items-center justify-center gap-3 text-center border border-dashed border-white/[0.08]">
               <Sparkles size={28} className="text-text-muted/20" />
-              <p className="text-text-muted text-sm">Select a photo and click Generate Posts to get started</p>
+              <p className="text-text-muted text-[13px]">Select a photo and click Generate Posts to get started</p>
             </div>
           )}
 
@@ -457,7 +457,7 @@ export default function PostStudioPage() {
                           className={`w-full bg-white/[0.04] border rounded-lg px-3 py-2 text-sm text-text-primary focus:outline-none resize-none ${overLimit ? "border-red-500/40" : "border-white/[0.10] focus:border-accent-blue/40"}`}
                         />
                       ) : (
-                        <p className="text-text-muted text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                        <p className="text-text-muted text-[13px] leading-relaxed whitespace-pre-wrap">{post.content}</p>
                       )}
                     </div>
 

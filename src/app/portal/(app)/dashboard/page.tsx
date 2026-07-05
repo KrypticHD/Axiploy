@@ -203,7 +203,7 @@ export default async function DashboardPage() {
           {digitalEmployees.length === 0 ? (
             <div className="glass rounded-2xl p-10 text-center border border-white/[0.06]">
               <Bot size={26} className="text-text-muted/30 mx-auto mb-3" />
-              <p className="text-text-primary text-sm font-medium">No AI employees configured yet</p>
+              <p className="text-text-primary text-[13px] font-medium">No AI employees configured yet</p>
               <p className="text-text-muted text-[12px] mt-1 mb-4">Your digital workforce will appear here once set up by the Axiploy team.</p>
               <Link href="/portal/support" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-[12px] font-medium hover:bg-accent-blue/20 transition-colors">
                 <Plus size={12} /> Request setup

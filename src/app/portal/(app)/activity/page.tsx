@@ -42,8 +42,8 @@ export default function ActivityPage() {
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-text-primary">Activity Feed</h1>
-          <p className="text-text-muted text-sm mt-1">Everything your AI employees have done, in real time.</p>
+          <h1 className="font-heading text-xl font-bold text-text-primary">Activity Feed</h1>
+          <p className="text-text-muted text-[13px] mt-1">Everything your AI employees have done, in real time.</p>
         </div>
         <button
           onClick={downloadCSV}
@@ -54,11 +54,11 @@ export default function ActivityPage() {
       </div>
 
       {loading ? (
-        <div className="glass rounded-2xl px-6 py-10 text-center text-text-muted text-sm">Loading activity…</div>
+        <div className="glass rounded-2xl px-6 py-10 text-center text-text-muted text-[13px]">Loading activity…</div>
       ) : activity.length === 0 ? (
         <div className="glass rounded-2xl p-10 text-center border border-white/[0.06]">
           <Activity size={28} className="text-text-muted/30 mx-auto mb-3" />
-          <p className="text-text-primary text-sm font-medium">No activity yet</p>
+          <p className="text-text-primary text-[13px] font-medium">No activity yet</p>
           <p className="text-text-muted text-xs mt-1">Activity will appear here as your AI employees complete tasks.</p>
         </div>
       ) : (

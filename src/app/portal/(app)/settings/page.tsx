@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Building2, Users, Bell, Shield, BarChart2, Monitor, CheckCircle2, AlertCircle } from "lucide-react";
 
 const inputClass =
-  "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-accent-blue/50 transition-all duration-200";
+  "w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-text-primary text-[13px] focus:outline-none focus:border-accent-blue/50 transition-all duration-200";
 
 type Tab = "profile" | "users" | "notifications" | "security" | "plan";
 
@@ -108,8 +108,8 @@ export default function SettingsPage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-bold text-text-primary">Settings</h1>
-        <p className="text-text-muted text-sm mt-1">Manage your account and portal preferences.</p>
+        <h1 className="font-heading text-xl font-bold text-text-primary">Settings</h1>
+        <p className="text-text-muted text-[13px] mt-1">Manage your account and portal preferences.</p>
       </div>
 
       {/* Tab bar */}
@@ -130,7 +130,7 @@ export default function SettingsPage() {
 
       {/* Profile */}
       {tab === "profile" && (
-        <div className="glass rounded-2xl p-6 space-y-4">
+        <div className="glass rounded-xl p-5 space-y-4">
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="text-text-muted text-xs mb-1.5 block">Full Name</label>
@@ -144,7 +144,7 @@ export default function SettingsPage() {
           {saveError && (
             <p className="flex items-center gap-1.5 text-red-400 text-xs"><AlertCircle size={12} />{saveError}</p>
           )}
-          <button onClick={handleSave} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium transition-colors">
+          <button onClick={handleSave} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-[13px] font-medium transition-colors">
             {saved ? <><CheckCircle2 size={14} /> Saved</> : "Save Changes"}
           </button>
         </div>
@@ -152,14 +152,14 @@ export default function SettingsPage() {
 
       {/* Users */}
       {tab === "users" && (
-        <div className="glass rounded-2xl p-6 space-y-4">
+        <div className="glass rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.03] border border-white/[0.05]">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent-blue to-accent-cyan flex items-center justify-center text-white text-xs font-bold">
                 {(profileForm.name || "U").split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
               </div>
               <div>
-                <p className="text-text-primary text-sm font-medium">{profileForm.name || "You"}</p>
+                <p className="text-text-primary text-[13px] font-medium">{profileForm.name || "You"}</p>
                 <p className="text-text-muted text-xs">{profileForm.email}</p>
               </div>
             </div>
@@ -168,7 +168,7 @@ export default function SettingsPage() {
           <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 flex items-start gap-3">
             <Users size={15} className="text-accent-blue mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-text-primary text-sm font-medium">Need to add team members?</p>
+              <p className="text-text-primary text-[13px] font-medium">Need to add team members?</p>
               <p className="text-text-muted text-xs mt-0.5 mb-3">User management is handled by the Axiploy team. Contact us to add, remove, or adjust permissions for your team.</p>
               <a href="/portal/support" className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20 hover:bg-accent-blue/20 text-accent-blue text-xs font-medium transition-colors">
                 Contact Axiploy to manage users
@@ -181,12 +181,12 @@ export default function SettingsPage() {
 
       {/* Notifications */}
       {tab === "notifications" && (
-        <div className="glass rounded-2xl p-6 space-y-4">
+        <div className="glass rounded-xl p-5 space-y-4">
           <p className="text-text-muted text-xs mb-2">Choose which events trigger notifications.</p>
           {NOTIF_DEFAULTS.map((n) => (
             <div key={n.key} className="flex items-center justify-between py-3 border-b border-white/[0.05] last:border-0">
               <div>
-                <p className="text-text-primary text-sm">{n.label}</p>
+                <p className="text-text-primary text-[13px]">{n.label}</p>
                 <p className="text-text-muted text-xs mt-0.5">{n.desc}</p>
               </div>
               <button
@@ -197,7 +197,7 @@ export default function SettingsPage() {
               </button>
             </div>
           ))}
-          <button onClick={handlePrefsSave} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium transition-colors">
+          <button onClick={handlePrefsSave} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-[13px] font-medium transition-colors">
             {saved ? <><CheckCircle2 size={14} /> Saved</> : "Save Preferences"}
           </button>
         </div>
@@ -205,7 +205,7 @@ export default function SettingsPage() {
 
       {/* Plan & Usage */}
       {tab === "plan" && (
-        <div className="glass rounded-2xl p-6 space-y-5">
+        <div className="glass rounded-xl p-5 space-y-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-text-primary font-semibold">Axiploy Plan</p>
@@ -228,9 +228,9 @@ export default function SettingsPage() {
               ))}
             </div>
           ) : (
-            <div className="py-6 text-center text-text-muted text-sm">Loading usage data…</div>
+            <div className="py-6 text-center text-text-muted text-[13px]">Loading usage data…</div>
           )}
-          <a href="/portal/support" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-accent-blue/30 hover:text-accent-blue text-text-muted text-sm font-medium transition-colors">
+          <a href="/portal/support" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-accent-blue/30 hover:text-accent-blue text-text-muted text-[13px] font-medium transition-colors">
             Contact Axiploy to discuss your plan
           </a>
         </div>
@@ -240,10 +240,10 @@ export default function SettingsPage() {
       {tab === "security" && (
         <div className="space-y-4">
           {/* Change password */}
-          <div className="glass rounded-2xl p-6 space-y-4">
+          <div className="glass rounded-xl p-5 space-y-4">
             <div className="flex items-center gap-3 mb-2">
               <Shield size={16} className="text-accent-blue" />
-              <h2 className="font-heading font-semibold text-text-primary text-sm">Change Password</h2>
+              <h2 className="font-heading font-semibold text-text-primary text-[13px]">Change Password</h2>
             </div>
             {pwSaved ? (
               <div className="flex items-center gap-2 text-emerald-400 text-sm">
@@ -262,7 +262,7 @@ export default function SettingsPage() {
                 {pwError && (
                   <p className="flex items-center gap-1.5 text-red-400 text-xs"><AlertCircle size={12} />{pwError}</p>
                 )}
-                <button type="submit" className="px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium transition-colors">
+                <button type="submit" className="px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-[13px] font-medium transition-colors">
                   Update Password
                 </button>
               </form>
@@ -270,20 +270,20 @@ export default function SettingsPage() {
           </div>
 
           {/* Active sessions */}
-          <div className="glass rounded-2xl p-6 space-y-3">
+          <div className="glass rounded-xl p-5 space-y-3">
             <div className="flex items-center gap-3">
               <Monitor size={16} className="text-accent-blue" />
-              <h2 className="font-heading font-semibold text-text-primary text-sm">Active Sessions</h2>
+              <h2 className="font-heading font-semibold text-text-primary text-[13px]">Active Sessions</h2>
               <span className="text-xs px-2.5 py-1 rounded-full glass border border-white/[0.10] text-text-muted ml-auto">Coming Soon</span>
             </div>
             <p className="text-text-muted text-xs">Session management will allow you to view and revoke active logins across devices.</p>
           </div>
 
           {/* MFA */}
-          <div className="glass rounded-2xl p-6">
+          <div className="glass rounded-xl p-5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-text-primary text-sm font-medium">Two-Factor Authentication</p>
+                <p className="text-text-primary text-[13px] font-medium">Two-Factor Authentication</p>
                 <p className="text-text-muted text-xs mt-0.5">Add an extra layer of security to your account</p>
               </div>
               <span className="text-xs px-3 py-1.5 rounded-full glass border border-white/[0.10] text-text-muted">Coming Soon</span>

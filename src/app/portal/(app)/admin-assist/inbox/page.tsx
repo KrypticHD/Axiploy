@@ -280,8 +280,8 @@ export default function InboxPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-text-primary">Inbox</h1>
-          <p className="text-text-muted text-sm mt-1">Connect your Microsoft 365 account to triage emails with AI.</p>
+          <h1 className="font-heading text-xl font-semibold text-text-primary">Inbox</h1>
+          <p className="text-text-muted text-[13px] mt-1">Connect your Microsoft 365 account to triage emails with AI.</p>
         </div>
         <div className="glass rounded-2xl p-10 text-center border border-dashed border-white/[0.08] space-y-5">
           <div className="w-16 h-16 rounded-2xl bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center mx-auto">
@@ -289,10 +289,10 @@ export default function InboxPage() {
           </div>
           <div>
             <p className="text-text-primary font-semibold text-lg">Connect Microsoft Outlook</p>
-            <p className="text-text-muted text-sm mt-1 max-w-sm mx-auto">AI reads your inbox, prioritises important emails, and surfaces what needs action.</p>
+            <p className="text-text-muted text-[13px] mt-1 max-w-sm mx-auto">AI reads your inbox, prioritises important emails, and surfaces what needs action.</p>
           </div>
           <a href="/api/portal/admin-assist/outlook/connect"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent-blue text-white text-sm font-semibold hover:bg-accent-blue-light transition-colors">
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-accent-blue text-white text-[13px] font-semibold hover:bg-accent-blue-light transition-colors">
             <Mail size={16} /> Connect Outlook / Microsoft 365
           </a>
         </div>
@@ -305,12 +305,12 @@ export default function InboxPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-text-primary">Inbox</h1>
-          <p className="text-text-muted text-sm mt-0.5">{connected.email}</p>
+          <h1 className="font-heading text-xl font-semibold text-text-primary">Inbox</h1>
+          <p className="text-text-muted text-[13px] mt-0.5">{connected.email}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => loadEmails(selectedFolder.id)} disabled={fetching}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass border border-white/[0.08] text-text-muted text-sm hover:text-text-primary transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl glass border border-white/[0.08] text-text-muted text-[13px] hover:text-text-primary transition-colors disabled:opacity-50">
             <RefreshCw size={13} className={fetching ? "animate-spin" : ""} /> Refresh
           </button>
           <button onClick={handleDisconnect} disabled={disconnecting}
@@ -363,7 +363,7 @@ export default function InboxPage() {
 
         {/* Email list */}
         <div className="flex-1 min-w-0 space-y-3">
-          <div className="flex items-center gap-1.5 text-text-muted text-sm">
+          <div className="flex items-center gap-1.5 text-text-muted text-[13px]">
             <ChevronRight size={14} />
             <span className="font-medium text-text-primary">{selectedFolder.name}</span>
             <span className="text-text-muted/50 text-xs">· {emails.length} loaded</span>
@@ -383,7 +383,7 @@ export default function InboxPage() {
           {fetching && emails.length === 0 ? (
             <div className="flex flex-col items-center py-16 gap-3">
               <Loader2 size={24} className="animate-spin text-accent-blue/60" />
-              <p className="text-text-muted text-sm">AI is reading and triaging your emails...</p>
+              <p className="text-text-muted text-[13px]">AI is reading and triaging your emails...</p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="glass rounded-2xl p-12 text-center border border-dashed border-white/[0.08]">
@@ -409,7 +409,7 @@ export default function InboxPage() {
                             {email.aiLabel && <span className="text-[10px] text-text-muted/60 italic">{email.aiLabel}</span>}
                             {!email.isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-blue flex-shrink-0" />}
                           </div>
-                          <p className={`text-sm font-medium truncate ${email.isRead ? "text-text-muted" : "text-text-primary"}`}>{email.subject}</p>
+                          <p className={`text-[13px] font-medium truncate ${email.isRead ? "text-text-muted" : "text-text-primary"}`}>{email.subject}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <p className="text-text-muted/60 text-xs truncate">{email.from}</p>
                             <span className="text-text-muted/30 text-xs">·</span>
@@ -459,7 +459,7 @@ export default function InboxPage() {
                               text={fullEmail.bodyType !== "html" ? fullEmail.body : undefined}
                             />
                           ) : (
-                            <p className="text-text-muted text-sm leading-relaxed">{email.preview}</p>
+                            <p className="text-text-muted text-[13px] leading-relaxed">{email.preview}</p>
                           )}
                         </div>
 
@@ -496,7 +496,7 @@ export default function InboxPage() {
                               onChange={(e) => setReplyText(e.target.value)}
                               placeholder="Write your reply..."
                               rows={6}
-                              className="w-full px-3 py-3 bg-transparent text-text-primary text-sm resize-none outline-none placeholder:text-text-muted/30"
+                              className="w-full px-3 py-3 bg-transparent text-text-primary text-[13px] resize-none outline-none placeholder:text-text-muted/30"
                               onKeyDown={(e) => {
                                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) sendReply();
                               }}
@@ -529,7 +529,7 @@ export default function InboxPage() {
               {nextSkipToken && filter === "all" && (
                 <div className="pt-2 text-center">
                   <button onClick={loadMore} disabled={loadingMore}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl glass border border-white/[0.08] text-text-muted text-sm hover:text-text-primary hover:border-white/[0.16] transition-colors disabled:opacity-50 mx-auto">
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl glass border border-white/[0.08] text-text-muted text-[13px] hover:text-text-primary hover:border-white/[0.16] transition-colors disabled:opacity-50 mx-auto">
                     {loadingMore ? <><Loader2 size={14} className="animate-spin" /> Loading...</> : `Load more (${emails.length} loaded so far)`}
                   </button>
                 </div>

@@ -30,7 +30,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       {/* Floating Ask Axiploy button */}
       <button
         onClick={() => setPanelOpen((v) => !v)}
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium shadow-lg shadow-accent-blue/30 transition-all duration-200 hover:scale-105"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl bg-accent-blue hover:bg-accent-blue-light text-white text-[13px] font-medium shadow-lg shadow-accent-blue/30 transition-all duration-200 hover:scale-105"
       >
         <MessageSquare size={16} />
         <span className="hidden sm:inline">Ask Axiploy</span>

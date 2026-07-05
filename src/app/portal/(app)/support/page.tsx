@@ -52,13 +52,13 @@ export default function SupportPage() {
           <CheckCircle2 size={28} className="text-emerald-400" />
         </div>
         <h2 className="font-heading text-xl font-bold text-text-primary">Request Submitted</h2>
-        <p className="text-text-muted text-sm">
+        <p className="text-text-muted text-[13px]">
           Your support request has been received by the Axiploy team. We typically respond within one business day.
         </p>
         <p className="text-xs text-text-muted/50">Reference: {refId}</p>
         <button
           onClick={() => { setSubmitted(false); setRefId(""); setForm({ type: "", priority: "Medium", subject: "", description: "" }); }}
-          className="mt-4 px-6 py-2.5 rounded-full glass border border-white/[0.10] hover:border-accent-blue/30 text-text-muted hover:text-text-primary text-sm transition-colors"
+          className="mt-4 px-6 py-2.5 rounded-full glass border border-white/[0.10] hover:border-accent-blue/30 text-text-muted hover:text-text-primary text-[13px] transition-colors"
         >
           Submit Another Request
         </button>
@@ -69,8 +69,8 @@ export default function SupportPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="font-heading text-2xl font-bold text-text-primary">Support & Change Requests</h1>
-        <p className="text-text-muted text-sm mt-1">
+        <h1 className="font-heading text-xl font-bold text-text-primary">Support & Change Requests</h1>
+        <p className="text-text-muted text-[13px] mt-1">
           Request workflow changes, report issues, or ask the Axiploy team for help.
         </p>
       </div>
@@ -154,7 +154,7 @@ export default function SupportPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-semibold transition-colors disabled:opacity-60"
+            className="w-full py-3 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-[13px] font-semibold transition-colors disabled:opacity-60"
           >
             {loading ? "Submitting…" : "Submit Request"}
           </button>

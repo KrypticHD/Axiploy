@@ -51,8 +51,8 @@ export default function ApprovalsPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="font-heading text-2xl font-bold text-text-primary">Approvals Centre</h1>
-        <p className="text-text-muted text-sm mt-1">
+        <h1 className="font-heading text-xl font-bold text-text-primary">Approvals Centre</h1>
+        <p className="text-text-muted text-[13px] mt-1">
           Actions your AI employees need you to review before proceeding.
         </p>
       </div>
@@ -60,7 +60,7 @@ export default function ApprovalsPage() {
       <div className="flex gap-1 p-1 glass rounded-xl border border-white/[0.06] w-fit">
         <button
           onClick={() => setTab("pending")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-all ${
             tab === "pending" ? "bg-accent-blue text-white" : "text-text-muted hover:text-text-primary"
           }`}
         >
@@ -74,7 +74,7 @@ export default function ApprovalsPage() {
         </button>
         <button
           onClick={() => setTab("history")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-all ${
             tab === "history" ? "bg-accent-blue text-white" : "text-text-muted hover:text-text-primary"
           }`}
         >
@@ -86,13 +86,13 @@ export default function ApprovalsPage() {
       {tab === "pending" && (
         <>
           {loading ? (
-            <div className="py-10 text-center text-text-muted text-sm">Loading approvals...</div>
+            <div className="py-10 text-center text-text-muted text-[13px]">Loading approvals...</div>
           ) : (
             <>
               {pending.length > 0 && (
                 <div className="flex items-center gap-2 glass rounded-xl px-4 py-3 border border-amber-500/20">
                   <CheckSquare size={15} className="text-amber-400" />
-                  <p className="text-amber-300 text-sm font-medium">{pending.length} items awaiting your approval</p>
+                  <p className="text-amber-300 text-[13px] font-medium">{pending.length} items awaiting your approval</p>
                 </div>
               )}
               <div className="space-y-4">
@@ -115,12 +115,12 @@ export default function ApprovalsPage() {
       {tab === "history" && (
         <div className="glass rounded-2xl border border-white/[0.08] overflow-hidden">
           <div className="px-5 py-4 border-b border-white/[0.06]">
-            <p className="text-sm font-medium text-text-primary">Approval History</p>
+            <p className="text-[13px] font-medium text-text-primary">Approval History</p>
             <p className="text-xs text-text-muted mt-0.5">A record of all actions reviewed and decisions made</p>
           </div>
           <div className="divide-y divide-white/[0.04]">
             {history.length === 0 && (
-              <div className="px-5 py-10 text-center text-text-muted text-sm">No history yet</div>
+              <div className="px-5 py-10 text-center text-text-muted text-[13px]">No history yet</div>
             )}
             {history.map((a) => ({
               id: a.id,

@@ -63,8 +63,8 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-semibold text-text-primary">Analytics</h1>
-        <p className="text-text-muted text-sm mt-1">Track your social media performance across all platforms.</p>
+        <h1 className="font-heading text-xl font-semibold text-text-primary">Analytics</h1>
+        <p className="text-text-muted text-[13px] mt-1">Track your social media performance across all platforms.</p>
       </div>
 
       {/* Post activity summary */}
@@ -75,18 +75,18 @@ export default function AnalyticsPage() {
           { label: "Approved", value: postStats.approved, icon: TrendingUp, color: "text-emerald-400" },
           { label: "Published", value: postStats.published, icon: Users, color: "text-accent-cyan" },
         ].map((s) => (
-          <div key={s.label} className="glass rounded-2xl p-5">
+          <div key={s.label} className="glass rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <s.icon size={16} className={s.color} />
               <p className="text-text-muted text-xs">{s.label}</p>
             </div>
-            <p className="font-heading text-3xl font-bold text-text-primary">{s.value}</p>
+            <p className="font-heading text-2xl font-bold text-text-primary">{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* Platform connections */}
-      <div className="glass rounded-2xl p-6">
+      <div className="glass rounded-xl p-5">
         <div className="flex items-center justify-between mb-5">
           <h2 className="font-heading font-semibold text-text-primary">Platform Connections</h2>
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Phase 2 — Coming Soon</span>
@@ -100,7 +100,7 @@ export default function AnalyticsPage() {
                     <span className={`text-xs font-bold ${platform.color}`}>{platform.label[0]}</span>
                   </div>
                   <div>
-                    <p className="text-text-primary text-sm font-medium">{platform.label}</p>
+                    <p className="text-text-primary text-[13px] font-medium">{platform.label}</p>
                     <p className="text-text-muted/50 text-[10px]">Not connected</p>
                   </div>
                 </div>
@@ -126,11 +126,11 @@ export default function AnalyticsPage() {
 
       {/* Quick actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Link href="/portal/social" className="glass rounded-2xl p-5 border border-white/[0.06] hover:border-accent-blue/20 transition-colors group">
+        <Link href="/portal/social" className="glass rounded-xl p-4 border border-white/[0.06] hover:border-accent-blue/20 transition-colors group">
           <p className="font-medium text-text-primary group-hover:text-accent-blue transition-colors">Generate New Posts</p>
           <p className="text-text-muted text-xs mt-1">Upload a photo and let AI create platform-specific content</p>
         </Link>
-        <Link href="/portal/social/posts" className="glass rounded-2xl p-5 border border-white/[0.06] hover:border-accent-blue/20 transition-colors group">
+        <Link href="/portal/social/posts" className="glass rounded-xl p-4 border border-white/[0.06] hover:border-accent-blue/20 transition-colors group">
           <p className="font-medium text-text-primary group-hover:text-accent-blue transition-colors">Review Drafts</p>
           <p className="text-text-muted text-xs mt-1">
             {postStats.draft > 0 ? `${postStats.draft} post${postStats.draft !== 1 ? "s" : ""} waiting for your approval` : "No pending drafts right now"}

@@ -93,13 +93,13 @@ export default function AdminReportsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-text-primary">Admin Reports</h1>
-          <p className="text-text-muted text-sm mt-1">
+          <h1 className="font-heading text-xl font-semibold text-text-primary">Admin Reports</h1>
+          <p className="text-text-muted text-[13px] mt-1">
             {report.period} · Generated {timeAgo(report.generatedAt)}
           </p>
         </div>
         <button onClick={handleGenerateSummary} disabled={generating || !!report.aiSummary}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm font-medium hover:bg-accent-blue/20 transition-colors disabled:opacity-50">
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-[13px] font-medium hover:bg-accent-blue/20 transition-colors disabled:opacity-50">
           {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
           {generating ? "Generating..." : report.aiSummary ? "Summary Generated" : "Generate AI Summary"}
         </button>
@@ -107,14 +107,14 @@ export default function AdminReportsPage() {
 
       {/* AI Summary */}
       {report.aiSummary && (
-        <div className="glass rounded-2xl p-5 border border-accent-blue/20 bg-accent-blue/5">
+        <div className="glass rounded-xl p-4 border border-accent-blue/20 bg-accent-blue/5">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-xl bg-accent-blue/20 flex items-center justify-center flex-shrink-0">
               <Sparkles size={14} className="text-accent-blue" />
             </div>
             <div>
               <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-2">AI Summary</p>
-              <p className="text-text-primary text-sm leading-relaxed">{report.aiSummary}</p>
+              <p className="text-text-primary text-[13px] leading-relaxed">{report.aiSummary}</p>
             </div>
           </div>
         </div>
@@ -130,12 +130,12 @@ export default function AdminReportsPage() {
           { label: "Active Onboardings", value: report.metrics.onboardingActive, icon: TrendingUp, color: "text-purple-400", note: "In progress" },
           { label: "Pending Approvals", value: report.metrics.approvalsPending, icon: CheckCircle2, color: report.metrics.approvalsPending > 0 ? "text-amber-400" : "text-emerald-400", note: report.metrics.approvalsPending > 0 ? "Needs review" : "All clear" },
         ].map((m) => (
-          <div key={m.label} className="glass rounded-2xl p-5 border border-white/[0.06]">
+          <div key={m.label} className="glass rounded-xl p-4 border border-white/[0.06]">
             <div className="flex items-center gap-2 mb-3">
               <m.icon size={14} className={m.color} />
               <p className="text-text-muted text-xs">{m.label}</p>
             </div>
-            <p className="font-heading text-3xl font-bold text-text-primary">{m.value}</p>
+            <p className="font-heading text-2xl font-bold text-text-primary">{m.value}</p>
             <p className="text-text-muted/50 text-xs mt-1">{m.note}</p>
           </div>
         ))}
@@ -143,8 +143,8 @@ export default function AdminReportsPage() {
 
       {/* Recent activity */}
       {report.recentActivity.length > 0 && (
-        <div className="glass rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-text-primary mb-4">Recent AI Activity</h2>
+        <div className="glass rounded-xl p-4">
+          <h2 className="text-[13px] font-semibold text-text-primary mb-4">Recent AI Activity</h2>
           <div className="space-y-2">
             {report.recentActivity.map((item, i) => (
               <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">

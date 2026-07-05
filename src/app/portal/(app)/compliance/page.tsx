@@ -128,18 +128,18 @@ export default function CompliancePage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-text-primary">Compliance Register</h1>
-          <p className="text-text-muted text-sm mt-1">Track licences, certifications, insurance and policies. Get reminded before anything expires.</p>
+          <h1 className="font-heading text-xl font-semibold text-text-primary">Compliance Register</h1>
+          <p className="text-text-muted text-[13px] mt-1">Track licences, certifications, insurance and policies. Get reminded before anything expires.</p>
         </div>
         <button onClick={() => { setShowAdd(true); setForm(BLANK); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors">
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-blue text-white text-[13px] font-medium hover:bg-accent-blue-light transition-colors">
           <Plus size={14} /> Add Item
         </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-1 glass rounded-2xl p-5 border border-white/[0.06] flex flex-col items-center justify-center text-center">
+        <div className="lg:col-span-1 glass rounded-xl p-4 border border-white/[0.06] flex flex-col items-center justify-center text-center">
           <p className={`font-heading text-4xl font-bold ${scoreColor}`}>{score}%</p>
           <p className="text-text-muted text-xs mt-1">Compliance Score</p>
         </div>
@@ -150,8 +150,8 @@ export default function CompliancePage() {
           { label: "Current", value: current, status: "current", color: "text-emerald-400" },
         ].map((s) => (
           <button key={s.label} onClick={() => setFilter(filter === s.status ? "all" : s.status)}
-            className={`glass rounded-2xl p-5 border text-center transition-colors ${filter === s.status ? "border-accent-blue/30 bg-accent-blue/5" : "border-white/[0.06] hover:border-white/[0.12]"}`}>
-            <p className={`font-heading text-3xl font-bold ${s.color}`}>{s.value}</p>
+            className={`glass rounded-xl p-4 border text-center transition-colors ${filter === s.status ? "border-accent-blue/30 bg-accent-blue/5" : "border-white/[0.06] hover:border-white/[0.12]"}`}>
+            <p className={`font-heading text-2xl font-bold ${s.color}`}>{s.value}</p>
             <p className="text-text-muted text-xs mt-1">{s.label}</p>
           </button>
         ))}
@@ -161,7 +161,7 @@ export default function CompliancePage() {
       {showAdd && (
         <div className="glass rounded-2xl border border-accent-blue/20 p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-text-primary">Add Compliance Item</h2>
+            <h2 className="text-[13px] font-semibold text-text-primary">Add Compliance Item</h2>
             <button onClick={() => setShowAdd(false)} className="text-text-muted/50 hover:text-text-muted transition-colors"><X size={16} /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -169,7 +169,7 @@ export default function CompliancePage() {
               <label className="text-xs text-text-muted mb-1 block">Title *</label>
               <input value={form.title || ""} onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
                 placeholder="e.g. Public Liability Insurance"
-                className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-sm placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+                className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-[13px] placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
             </div>
             <div>
               <label className="text-xs text-text-muted mb-1 block">Category</label>
@@ -190,21 +190,21 @@ export default function CompliancePage() {
               <label className="text-xs text-text-muted mb-1 block">Assigned To</label>
               <input value={form.assigned_to || ""} onChange={(e) => setForm((p) => ({ ...p, assigned_to: e.target.value }))}
                 placeholder="e.g. Jane Smith"
-                className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-sm placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+                className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-[13px] placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
             </div>
             <div className="sm:col-span-2">
               <label className="text-xs text-text-muted mb-1 block">Description / Notes</label>
               <input value={form.description || ""} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                 placeholder="e.g. Annual renewal, policy number ABC123"
-                className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-sm placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+                className="w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-[13px] placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
             </div>
           </div>
           <div className="flex items-center gap-2 pt-1">
             <button onClick={handleAdd} disabled={saving || !form.title?.trim()}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue text-white text-[13px] font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
               {saving ? <><Loader2 size={13} className="animate-spin" /> Saving...</> : <><Check size={13} /> Add Item</>}
             </button>
-            <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-xl glass border border-white/[0.08] text-text-muted text-sm hover:bg-white/[0.06] transition-colors">Cancel</button>
+            <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-xl glass border border-white/[0.08] text-text-muted text-[13px] hover:bg-white/[0.06] transition-colors">Cancel</button>
           </div>
         </div>
       )}
@@ -251,7 +251,7 @@ export default function CompliancePage() {
             {items.length === 0 ? "Add your licences, certifications, and insurance policies to stay on top of renewals." : "Try a different filter."}
           </p>
           {items.length === 0 && (
-            <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm font-medium hover:bg-accent-blue/20 transition-colors">
+            <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-[13px] font-medium hover:bg-accent-blue/20 transition-colors">
               <Plus size={13} /> Add your first item
             </button>
           )}
@@ -269,7 +269,7 @@ export default function CompliancePage() {
                   <div className="p-4 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <input value={editForm.title || ""} onChange={(e) => setEditForm((p) => ({ ...p, title: e.target.value }))}
-                        placeholder="Title" className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-sm focus:outline-none focus:border-accent-blue/40" />
+                        placeholder="Title" className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-[13px] focus:outline-none focus:border-accent-blue/40" />
                       <div className="relative">
                         <select value={editForm.category || ""} onChange={(e) => setEditForm((p) => ({ ...p, category: e.target.value }))}
                           className="w-full px-3 py-2 rounded-xl bg-[#1c1c2e] text-white text-sm border border-white/[0.10] focus:outline-none appearance-none pr-8">
@@ -280,9 +280,9 @@ export default function CompliancePage() {
                       <input type="date" value={editForm.expiry_date || ""} onChange={(e) => setEditForm((p) => ({ ...p, expiry_date: e.target.value }))}
                         className="px-3 py-2 rounded-xl bg-[#1c1c2e] text-white text-sm border border-white/[0.10] focus:outline-none focus:border-accent-blue/40" />
                       <input value={editForm.assigned_to || ""} onChange={(e) => setEditForm((p) => ({ ...p, assigned_to: e.target.value }))}
-                        placeholder="Assigned to" className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-sm focus:outline-none focus:border-accent-blue/40" />
+                        placeholder="Assigned to" className="px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-[13px] focus:outline-none focus:border-accent-blue/40" />
                       <input value={editForm.description || ""} onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
-                        placeholder="Description / notes" className="sm:col-span-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-sm focus:outline-none focus:border-accent-blue/40" />
+                        placeholder="Description / notes" className="sm:col-span-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-text-primary text-[13px] focus:outline-none focus:border-accent-blue/40" />
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => handleSaveEdit(item.id)} disabled={saving}
@@ -298,7 +298,7 @@ export default function CompliancePage() {
                       <span className="text-lg flex-shrink-0 mt-0.5">{CATEGORY_ICONS[item.category] || "🗂️"}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                          <p className="text-text-primary text-sm font-medium">{item.title}</p>
+                          <p className="text-text-primary text-[13px] font-medium">{item.title}</p>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium inline-flex items-center gap-1 ${cfg.color} ${cfg.bg} ${cfg.border}`}>
                             <Icon size={9} /> {cfg.label}
                           </span>

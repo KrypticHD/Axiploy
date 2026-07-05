@@ -154,8 +154,8 @@ export default function EmailsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-text-primary">Email Drafts</h1>
-          <p className="text-text-muted text-sm mt-1">
+          <h1 className="font-heading text-xl font-semibold text-text-primary">Email Drafts</h1>
+          <p className="text-text-muted text-[13px] mt-1">
             {outlookConnected
               ? `Connected to ${outlookEmail} — send directly from Axiploy`
               : "AI drafts your emails. Connect Outlook to send directly."}
@@ -168,15 +168,15 @@ export default function EmailsPage() {
           </div>
         ) : (
           <a href="/api/portal/admin-assist/outlook/connect"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm font-medium hover:bg-accent-blue/20 transition-colors">
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-[13px] font-medium hover:bg-accent-blue/20 transition-colors">
             <Link size={14} /> Connect Outlook
           </a>
         )}
       </div>
 
       {/* Generator */}
-      <div className="glass rounded-2xl p-5 border border-accent-blue/15 space-y-4">
-        <p className="text-sm font-semibold text-text-primary flex items-center gap-2">
+      <div className="glass rounded-xl p-4 border border-accent-blue/15 space-y-4">
+        <p className="text-[13px] font-semibold text-text-primary flex items-center gap-2">
           <Sparkles size={14} className="text-accent-blue" /> Generate Email Draft
         </p>
         <div className="grid grid-cols-2 gap-3">
@@ -217,7 +217,7 @@ export default function EmailsPage() {
             className="w-full px-3 py-2.5 text-sm bg-white/[0.04] border border-white/[0.10] rounded-xl text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40 resize-none" />
         </div>
         <button onClick={handleGenerate} disabled={generating || !form.context.trim()}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-blue text-white text-[13px] font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
           {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
           {generating ? "Writing your email..." : "Generate Draft"}
         </button>
@@ -254,7 +254,7 @@ export default function EmailsPage() {
                       <input value={editValues.subject} onChange={(e) => setEditValues((v) => ({ ...v, subject: e.target.value }))}
                         className="w-full px-3 py-1.5 text-sm bg-white/[0.04] border border-accent-blue/30 rounded-lg text-text-primary focus:outline-none focus:border-accent-blue/60 font-medium" />
                     ) : (
-                      <p className="text-text-primary text-sm font-medium">{draft.subject}</p>
+                      <p className="text-text-primary text-[13px] font-medium">{draft.subject}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0 ml-4">
@@ -302,7 +302,7 @@ export default function EmailsPage() {
                       className="w-full px-3 py-2.5 text-sm bg-white/[0.04] border border-accent-blue/30 rounded-xl text-text-primary focus:outline-none focus:border-accent-blue/60 resize-none leading-relaxed" />
                   ) : (
                     <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                      <p className="text-text-muted text-sm leading-relaxed whitespace-pre-wrap">{draft.body}</p>
+                      <p className="text-text-muted text-[13px] leading-relaxed whitespace-pre-wrap">{draft.body}</p>
                     </div>
                   )}
                 </div>

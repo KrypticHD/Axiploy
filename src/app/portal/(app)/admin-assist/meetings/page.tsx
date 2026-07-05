@@ -89,18 +89,18 @@ export default function MeetingsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-text-primary">Meetings</h1>
-          <p className="text-text-muted text-sm mt-1">Schedule and track your meetings and reminders.</p>
+          <h1 className="font-heading text-xl font-semibold text-text-primary">Meetings</h1>
+          <p className="text-text-muted text-[13px] mt-1">Schedule and track your meetings and reminders.</p>
         </div>
         <button onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm font-medium hover:bg-accent-blue/20 transition-colors">
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-[13px] font-medium hover:bg-accent-blue/20 transition-colors">
           <Plus size={14} /> Schedule Meeting
         </button>
       </div>
 
       {showAdd && (
-        <div className="glass rounded-2xl p-5 border border-accent-blue/20 space-y-4">
-          <p className="text-sm font-semibold text-text-primary">New Meeting</p>
+        <div className="glass rounded-xl p-4 border border-accent-blue/20 space-y-4">
+          <p className="text-[13px] font-semibold text-text-primary">New Meeting</p>
           <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             placeholder="Meeting title..." autoFocus
             className="w-full px-3 py-2.5 text-sm bg-white/[0.04] border border-white/[0.10] rounded-xl text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
@@ -133,11 +133,11 @@ export default function MeetingsPage() {
             className="w-full px-3 py-2.5 text-sm bg-white/[0.04] border border-white/[0.10] rounded-xl text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40 resize-none" />
           <div className="flex gap-2">
             <button onClick={handleAdd} disabled={!form.title.trim() || !form.start_time || saving}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue text-white text-[13px] font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
               {saving ? "Saving..." : "Schedule"}
             </button>
-            <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-xl glass border border-white/[0.08] text-text-muted text-sm hover:bg-white/[0.06] transition-colors">
+            <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-xl glass border border-white/[0.08] text-text-muted text-[13px] hover:bg-white/[0.06] transition-colors">
               Cancel
             </button>
           </div>
@@ -163,7 +163,7 @@ export default function MeetingsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           {isToday(m.start_time) && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-accent-blue/20 text-accent-blue font-semibold">Today</span>}
-                          <p className="text-text-primary text-sm font-medium truncate">{m.title}</p>
+                          <p className="text-text-primary text-[13px] font-medium truncate">{m.title}</p>
                         </div>
                         <div className="flex items-center gap-3 flex-wrap">
                           <p className="text-text-muted text-xs flex items-center gap-1"><Clock size={11} /> {formatDateTime(m.start_time)}</p>
@@ -198,7 +198,7 @@ export default function MeetingsPage() {
                   <div key={m.id} className="glass rounded-xl p-4 border border-white/[0.04] opacity-60">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-text-muted text-sm">{m.title}</p>
+                        <p className="text-text-muted text-[13px]">{m.title}</p>
                         <p className="text-text-muted/50 text-xs mt-0.5">{formatDateTime(m.start_time)}</p>
                       </div>
                       <button onClick={() => handleDelete(m.id)} className="p-1.5 rounded-lg text-text-muted/30 hover:text-red-400 hover:bg-red-500/10 transition-colors">

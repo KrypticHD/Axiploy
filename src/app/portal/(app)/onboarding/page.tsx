@@ -64,12 +64,12 @@ export default async function OnboardingPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-text-primary">Onboarding Dashboard</h1>
-          <p className="text-text-muted text-sm mt-1">AI Onboarding Assistant — current activity and employee progress.</p>
+          <h1 className="font-heading text-xl font-bold text-text-primary">Onboarding Dashboard</h1>
+          <p className="text-text-muted text-[13px] mt-1">AI Onboarding Assistant — current activity and employee progress.</p>
         </div>
         <Link
           href="/portal/forms/new-employee"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium transition-colors"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-[13px] font-medium transition-colors"
         >
           <FilePlus size={15} /> Add Employee
         </Link>

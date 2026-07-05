@@ -117,7 +117,7 @@ export default function EmployeeTable({ records }: { records: OnboardingRecord[]
       </div>
 
       {/* Table */}
-      <div className="glass rounded-2xl overflow-hidden">
+      <div className="glass rounded-xl overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b border-white/[0.06]">
@@ -143,7 +143,7 @@ export default function EmployeeTable({ records }: { records: OnboardingRecord[]
                 key={r.id}
                 className={`border-b border-white/[0.04] last:border-0 transition-colors ${selected.has(r.id) ? "bg-accent-blue/5" : "hover:bg-white/[0.02]"}`}
               >
-                <td className="px-4 py-3.5 pl-5 w-8">
+                <td className="px-3 py-2.5 pl-5 w-8">
                   <input
                     type="checkbox"
                     checked={selected.has(r.id)}
@@ -151,26 +151,26 @@ export default function EmployeeTable({ records }: { records: OnboardingRecord[]
                     className="rounded border-white/20 bg-white/[0.04] accent-blue-500 cursor-pointer"
                   />
                 </td>
-                <td className="px-4 py-3.5">
-                  <p className="text-text-primary text-sm font-medium">{r.employeeName}</p>
+                <td className="px-3 py-2.5">
+                  <p className="text-text-primary text-[13px] font-medium">{r.employeeName}</p>
                   <p className="text-text-muted text-xs">{r.department}</p>
                 </td>
-                <td className="px-4 py-3.5 text-text-muted text-sm">{r.role}</td>
-                <td className="px-4 py-3.5 text-text-muted text-sm whitespace-nowrap">
+                <td className="px-3 py-2.5 text-text-muted text-[13px]">{r.role}</td>
+                <td className="px-3 py-2.5 text-text-muted text-[13px] whitespace-nowrap">
                   {new Date(r.startDate).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
                 </td>
-                <td className="px-4 py-3.5 text-text-muted text-sm">{r.manager}</td>
-                <td className="px-4 py-3.5"><StatusPill status={r.status} /></td>
-                <td className="px-4 py-3.5"><StatusPill status={r.riskLevel} /></td>
-                <td className="px-4 py-3.5 text-center">
+                <td className="px-3 py-2.5 text-text-muted text-[13px]">{r.manager}</td>
+                <td className="px-3 py-2.5"><StatusPill status={r.status} /></td>
+                <td className="px-3 py-2.5"><StatusPill status={r.riskLevel} /></td>
+                <td className="px-3 py-2.5 text-center">
                   {r.missingDocuments > 0 ? (
                     <span className="text-orange-400 font-semibold text-sm">{r.missingDocuments}</span>
                   ) : (
                     <span className="text-emerald-400 text-sm">✓</span>
                   )}
                 </td>
-                <td className="px-4 py-3.5 text-text-muted text-xs max-w-[180px] truncate">{r.nextAction}</td>
-                <td className="px-4 py-3.5 pr-5">
+                <td className="px-3 py-2.5 text-text-muted text-xs max-w-[180px] truncate">{r.nextAction}</td>
+                <td className="px-3 py-2.5 pr-5">
                   <Link href={`/portal/onboarding/${r.id}`} className="text-text-muted hover:text-accent-cyan transition-colors">
                     <ChevronRight size={16} />
                   </Link>

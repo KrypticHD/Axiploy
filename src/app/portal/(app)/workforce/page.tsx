@@ -68,15 +68,15 @@ export default async function WorkforcePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-bold text-text-primary">AI Workforce</h1>
-        <p className="text-text-muted text-sm mt-1">Your active digital employees and their current work.</p>
+        <h1 className="font-heading text-xl font-bold text-text-primary">AI Workforce</h1>
+        <p className="text-text-muted text-[13px] mt-1">Your active digital employees and their current work.</p>
       </div>
 
       {employees.length === 0 ? (
         <div className="glass rounded-2xl p-12 text-center border border-white/[0.06]">
           <Bot size={32} className="text-text-muted/40 mx-auto mb-3" />
           <p className="text-text-primary font-medium">No Digital Employees yet</p>
-          <p className="text-text-muted text-sm mt-1">Your AI workforce will appear here once configured.</p>
+          <p className="text-text-muted text-[13px] mt-1">Your AI workforce will appear here once configured.</p>
         </div>
       ) : (
         <div className="grid gap-5">
@@ -86,7 +86,7 @@ export default async function WorkforcePage() {
             const href = deLinks[typeKey] || "/portal/workforce";
             const desc = deDescriptions[typeKey] || "";
             return (
-              <div key={de.id} className="glass rounded-2xl p-7 border border-white/[0.08] hover:border-accent-blue/20 transition-colors">
+              <div key={de.id} className="glass rounded-xl p-5 border border-white/[0.08] hover:border-accent-blue/20 transition-colors">
                 <div className="flex items-start justify-between gap-4 mb-5">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-accent-blue/20 to-accent-cyan/10 border border-accent-blue/15 flex items-center justify-center">
@@ -94,7 +94,7 @@ export default async function WorkforcePage() {
                     </div>
                     <div>
                       <h2 className="font-heading text-lg font-semibold text-text-primary">{de.name}</h2>
-                      {desc && <p className="text-text-muted text-sm mt-0.5 max-w-xl">{desc}</p>}
+                      {desc && <p className="text-text-muted text-[13px] mt-0.5 max-w-xl">{desc}</p>}
                     </div>
                   </div>
                   <StatusPill status={de.status} size="md" />
@@ -110,13 +110,13 @@ export default async function WorkforcePage() {
                 </div>
 
                 <div className="flex gap-3">
-                  <Link href={href} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-sm font-medium transition-colors">
+                  <Link href={href} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue hover:bg-accent-blue-light text-white text-[13px] font-medium transition-colors">
                     View Dashboard <ArrowRight size={14} />
                   </Link>
-                  <Link href="/portal/reports" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-white/20 text-text-primary text-sm font-medium transition-colors">
+                  <Link href="/portal/reports" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-white/20 text-text-primary text-[13px] font-medium transition-colors">
                     View Reports
                   </Link>
-                  <Link href="/portal/support" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-white/20 text-text-muted text-sm font-medium transition-colors">
+                  <Link href="/portal/support" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full glass border border-white/[0.10] hover:border-white/20 text-text-muted text-[13px] font-medium transition-colors">
                     <Settings size={14} /> Configure
                   </Link>
                 </div>

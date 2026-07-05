@@ -82,13 +82,13 @@ export default function TemplatesPage() {
 
   const vars = VARIABLES[selected] || [];
 
-  if (loading) return <div className="py-10 text-center text-text-muted text-sm">Loading templates…</div>;
+  if (loading) return <div className="py-10 text-center text-text-muted text-[13px]">Loading templates…</div>;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-heading text-2xl font-bold text-text-primary">Email Templates</h1>
-        <p className="text-text-muted text-sm mt-1">Customise the emails sent by your AI workforce to employees and managers.</p>
+        <h1 className="font-heading text-xl font-bold text-text-primary">Email Templates</h1>
+        <p className="text-text-muted text-[13px] mt-1">Customise the emails sent by your AI workforce to employees and managers.</p>
       </div>
 
       <div className="grid lg:grid-cols-[280px_1fr] gap-6 items-start">
@@ -105,7 +105,7 @@ export default function TemplatesPage() {
             >
               <div className="flex items-center gap-2.5">
                 <Mail size={14} />
-                <span className="text-sm font-medium">{LABELS[t.template_type] || t.template_type}</span>
+                <span className="text-[13px] font-medium">{LABELS[t.template_type] || t.template_type}</span>
               </div>
               {t.updated_at && (
                 <p className="text-[10px] text-text-muted/50 mt-0.5 pl-[22px]">
@@ -158,7 +158,7 @@ export default function TemplatesPage() {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue/10 border border-accent-blue/20 hover:bg-accent-blue/20 text-accent-blue text-sm font-medium transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent-blue/10 border border-accent-blue/20 hover:bg-accent-blue/20 text-accent-blue text-[13px] font-medium transition-colors disabled:opacity-50"
             >
               <Save size={14} />
               {saving ? "Saving…" : "Save Template"}

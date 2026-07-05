@@ -93,8 +93,8 @@ export default function NotificationsPage() {
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-text-primary">Notifications</h1>
-          <p className="text-text-muted text-sm mt-1">
+          <h1 className="font-heading text-xl font-bold text-text-primary">Notifications</h1>
+          <p className="text-text-muted text-[13px] mt-1">
             {loading ? "Loading..." : unread > 0 ? `${unread} unread notification${unread > 1 ? "s" : ""}` : "All caught up"}
           </p>
         </div>
@@ -111,7 +111,7 @@ export default function NotificationsPage() {
       {!loading && notifications.length === 0 ? (
         <div className="glass rounded-2xl border border-white/[0.08] p-12 text-center">
           <Bell size={32} className="text-text-muted/30 mx-auto mb-3" />
-          <p className="text-text-muted text-sm">No notifications at the moment</p>
+          <p className="text-text-muted text-[13px]">No notifications at the moment</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -130,7 +130,7 @@ export default function NotificationsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className={`text-sm font-medium ${isRead ? "text-text-muted" : "text-text-primary"}`}>{n.title}</p>
+                      <p className={`text-[13px] font-medium ${isRead ? "text-text-muted" : "text-text-primary"}`}>{n.title}</p>
                       {!isRead && <span className="w-1.5 h-1.5 rounded-full bg-accent-blue flex-shrink-0" />}
                     </div>
                     <p className="text-xs text-text-muted mt-0.5 leading-relaxed">{n.body}</p>

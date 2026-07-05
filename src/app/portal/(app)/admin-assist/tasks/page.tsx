@@ -96,19 +96,19 @@ export default function TasksPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-text-primary">Tasks</h1>
-          <p className="text-text-muted text-sm mt-1">Create, assign and track tasks across your team.</p>
+          <h1 className="font-heading text-xl font-semibold text-text-primary">Tasks</h1>
+          <p className="text-text-muted text-[13px] mt-1">Create, assign and track tasks across your team.</p>
         </div>
         <button onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm font-medium hover:bg-accent-blue/20 transition-colors">
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-[13px] font-medium hover:bg-accent-blue/20 transition-colors">
           <Plus size={14} /> Add Task
         </button>
       </div>
 
       {/* Add form */}
       {showAdd && (
-        <div className="glass rounded-2xl p-5 border border-accent-blue/20 space-y-4">
-          <p className="text-sm font-semibold text-text-primary">New Task</p>
+        <div className="glass rounded-xl p-4 border border-accent-blue/20 space-y-4">
+          <p className="text-[13px] font-semibold text-text-primary">New Task</p>
           <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             placeholder="Task title..." autoFocus
             className="w-full px-3 py-2.5 text-sm bg-white/[0.04] border border-white/[0.10] rounded-xl text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
@@ -139,11 +139,11 @@ export default function TasksPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={handleAdd} disabled={!form.title.trim() || saving}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue text-white text-[13px] font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
               {saving ? "Adding..." : "Add Task"}
             </button>
-            <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-xl glass border border-white/[0.08] text-text-muted text-sm hover:bg-white/[0.06] transition-colors">
+            <button onClick={() => setShowAdd(false)} className="px-4 py-2 rounded-xl glass border border-white/[0.08] text-text-muted text-[13px] hover:bg-white/[0.06] transition-colors">
               Cancel
             </button>
           </div>
@@ -154,7 +154,7 @@ export default function TasksPage() {
       <div className="flex gap-1 p-1 rounded-xl glass border border-white/[0.06] w-fit">
         {(["active", "completed"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${tab === t ? "bg-accent-blue/20 text-accent-blue" : "text-text-muted hover:text-text-primary"}`}>
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors capitalize ${tab === t ? "bg-accent-blue/20 text-accent-blue" : "text-text-muted hover:text-text-primary"}`}>
             {t === "active" ? "Active" : "Completed"}
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${tab === t ? "bg-accent-blue/30 text-accent-blue" : "bg-white/[0.08] text-text-muted"}`}>
               {t === "active" ? active.length : completed.length}
@@ -167,7 +167,7 @@ export default function TasksPage() {
         <div className="flex justify-center py-16"><Loader2 size={24} className="animate-spin text-text-muted/40" /></div>
       ) : displayed.length === 0 ? (
         <div className="glass rounded-2xl p-12 text-center border border-dashed border-white/[0.08]">
-          <p className="text-text-muted text-sm">{tab === "active" ? "No active tasks — add one above" : "No completed tasks yet"}</p>
+          <p className="text-text-muted text-[13px]">{tab === "active" ? "No active tasks — add one above" : "No completed tasks yet"}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -184,7 +184,7 @@ export default function TasksPage() {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className={`text-sm font-medium ${STATUS_STYLE[task.status]}`}>{task.title}</p>
+                    <p className={`text-[13px] font-medium ${STATUS_STYLE[task.status]}`}>{task.title}</p>
                     <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border capitalize ${PRIORITY_STYLE[task.priority]}`}>{task.priority}</span>
                     {isOverdue(task) && <span className="text-[10px] text-red-400 flex items-center gap-1"><AlertTriangle size={10} /> Overdue</span>}
                   </div>

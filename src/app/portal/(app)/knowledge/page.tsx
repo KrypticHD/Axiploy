@@ -83,7 +83,7 @@ function DocRow({ doc, onDelete, onUpdate }: {
             </div>
           ) : (
             <>
-              <p className="text-text-primary text-sm font-medium truncate">{doc.name}</p>
+              <p className="text-text-primary text-[13px] font-medium truncate">{doc.name}</p>
               <div className="flex items-center gap-2 mt-0.5">
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-text-muted">{doc.category}</span>
                 <span className="text-[10px] text-text-muted/50">{doc.file_type}</span>
@@ -209,8 +209,8 @@ export default function KnowledgePage() {
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-text-primary">Knowledge Base</h1>
-          <p className="text-text-muted text-sm mt-1">Upload and manage documents for your AI workforce.</p>
+          <h1 className="font-heading text-xl font-bold text-text-primary">Knowledge Base</h1>
+          <p className="text-text-muted text-[13px] mt-1">Upload and manage documents for your AI workforce.</p>
         </div>
         <div className="flex items-center gap-3">
           <select
@@ -222,7 +222,7 @@ export default function KnowledgePage() {
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
-          <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20 hover:bg-accent-blue/20 text-accent-blue text-sm font-medium transition-colors cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
+          <label className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-blue/10 border border-accent-blue/20 hover:bg-accent-blue/20 text-accent-blue text-[13px] font-medium transition-colors cursor-pointer ${uploading ? "opacity-50 pointer-events-none" : ""}`}>
             <Upload size={14} />
             {uploading ? "Uploading…" : "Upload Document"}
             <input
@@ -270,17 +270,17 @@ export default function KnowledgePage() {
       </div>
 
       {loading ? (
-        <div className="py-10 text-center text-text-muted text-sm">Loading documents…</div>
+        <div className="py-10 text-center text-text-muted text-[13px]">Loading documents…</div>
       ) : filtered.length === 0 ? (
         <div className="glass rounded-2xl p-10 text-center border border-white/[0.06]">
           <BookOpen size={28} className="text-text-muted/30 mx-auto mb-3" />
           {docs.length === 0 ? (
             <>
-              <p className="text-text-primary text-sm font-medium">No documents yet</p>
+              <p className="text-text-primary text-[13px] font-medium">No documents yet</p>
               <p className="text-text-muted text-xs mt-1">Upload your first document using the button above.</p>
             </>
           ) : (
-            <p className="text-text-muted text-sm">No documents match your search.</p>
+            <p className="text-text-muted text-[13px]">No documents match your search.</p>
           )}
         </div>
       ) : (

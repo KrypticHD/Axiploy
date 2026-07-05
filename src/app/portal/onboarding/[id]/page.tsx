@@ -43,13 +43,13 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
     <div className="space-y-6 max-w-5xl mx-auto">
       {/* Back + Header */}
       <div>
-        <Link href="/portal/onboarding" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary text-sm transition-colors mb-4">
+        <Link href="/portal/onboarding" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary text-[13px] transition-colors mb-4">
           <ArrowLeft size={14} /> Back to Onboarding
         </Link>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="font-heading text-2xl font-bold text-text-primary">{emp.employee_name}</h1>
-            <p className="text-text-muted text-sm mt-1">{emp.role}{emp.department ? ` · ${emp.department}` : ""}{emp.manager ? ` · Manager: ${emp.manager}` : ""}</p>
+            <h1 className="font-heading text-xl font-bold text-text-primary">{emp.employee_name}</h1>
+            <p className="text-text-muted text-[13px] mt-1">{emp.role}{emp.department ? ` · ${emp.department}` : ""}{emp.manager ? ` · Manager: ${emp.manager}` : ""}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap justify-end">
             <StatusPill status={emp.status} size="md" />
@@ -63,7 +63,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
         {/* Left: details + documents */}
         <div className="lg:col-span-3 space-y-5">
           {/* Employee info */}
-          <div className="glass rounded-2xl p-6">
+          <div className="glass rounded-xl p-5">
             <h2 className="font-heading font-semibold text-text-primary mb-4">Employee Details</h2>
             <div className="grid grid-cols-2 gap-4">
               {[
@@ -78,7 +78,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                   <item.icon size={14} className="text-text-muted mt-0.5 shrink-0" />
                   <div>
                     <p className="text-text-muted text-xs">{item.label}</p>
-                    <p className="text-text-primary text-sm mt-0.5">{item.value}</p>
+                    <p className="text-text-primary text-[13px] mt-0.5">{item.value}</p>
                   </div>
                 </div>
               ))}
@@ -93,10 +93,10 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
           </div>
 
           {/* Document checklist */}
-          <div className="glass rounded-2xl p-6">
+          <div className="glass rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-heading font-semibold text-text-primary">Documents</h2>
-              <span className="text-text-muted text-sm">{received}/{total} received</span>
+              <span className="text-text-muted text-[13px]">{received}/{total} received</span>
             </div>
             {total > 0 && (
               <div className="w-full bg-white/[0.04] rounded-full h-1.5 mb-5">
@@ -107,7 +107,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
               </div>
             )}
             {docs.length === 0 ? (
-              <p className="text-text-muted text-sm">No documents required.</p>
+              <p className="text-text-muted text-[13px]">No documents required.</p>
             ) : (
               <ul className="space-y-2.5">
                 {docs.map((doc) => (
@@ -142,7 +142,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
 
         {/* Right: actions */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="glass rounded-2xl p-6">
+          <div className="glass rounded-xl p-5">
             <h2 className="font-heading font-semibold text-text-primary mb-4">Actions</h2>
             <div className="space-y-2.5">
               {[
@@ -158,7 +158,7 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                   default: "bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.08] text-text-muted",
                 };
                 return (
-                  <button key={action.label} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-colors ${colours[action.accent]}`}>
+                  <button key={action.label} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-[13px] font-medium transition-colors ${colours[action.accent]}`}>
                     <action.icon size={15} />
                     {action.label}
                   </button>
@@ -167,16 +167,16 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
             </div>
           </div>
 
-          <div className="glass rounded-2xl p-5">
+          <div className="glass rounded-xl p-4">
             <p className="text-text-muted text-xs font-medium mb-1">Upload Link</p>
             <p className="text-accent-blue text-xs break-all">
               {emp.token ? `axiploy.com/onboard/${emp.token}` : "No link available"}
             </p>
           </div>
 
-          <div className="glass rounded-2xl p-5">
+          <div className="glass rounded-xl p-4">
             <p className="text-text-muted text-xs font-medium mb-1">Added</p>
-            <p className="text-text-primary text-sm">
+            <p className="text-text-primary text-[13px]">
               {new Date(emp.created_at).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}
             </p>
           </div>

@@ -37,7 +37,7 @@ export default function AdminBriefingPage() {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
         <Loader2 size={24} className="animate-spin text-text-muted/40" />
-        <p className="text-text-muted text-sm">Preparing your daily briefing...</p>
+        <p className="text-text-muted text-[13px]">Preparing your daily briefing...</p>
       </div>
     );
   }
@@ -48,20 +48,20 @@ export default function AdminBriefingPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <p className="text-text-muted text-sm">{data.date}</p>
-        <h1 className="font-heading text-2xl font-semibold text-text-primary mt-1">Daily Briefing</h1>
+        <p className="text-text-muted text-[13px]">{data.date}</p>
+        <h1 className="font-heading text-xl font-semibold text-text-primary mt-1">Daily Briefing</h1>
       </div>
 
       {/* AI Summary */}
       {data.summary && (
-        <div className="glass rounded-2xl p-5 border border-accent-blue/20 bg-accent-blue/5">
+        <div className="glass rounded-xl p-4 border border-accent-blue/20 bg-accent-blue/5">
           <div className="flex items-start gap-3">
             <div className="w-8 h-8 rounded-xl bg-accent-blue/20 flex items-center justify-center flex-shrink-0 mt-0.5">
               <Sparkles size={14} className="text-accent-blue" />
             </div>
             <div>
               <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-2">AI Briefing</p>
-              <p className="text-text-primary text-sm leading-relaxed">{data.summary}</p>
+              <p className="text-text-primary text-[13px] leading-relaxed">{data.summary}</p>
             </div>
           </div>
         </div>
@@ -76,12 +76,12 @@ export default function AdminBriefingPage() {
           { label: "Active Onboardings", value: data.onboarding, sub: "Employees in progress", subColor: "text-text-muted", href: "/portal/onboarding", icon: AlertTriangle },
           ...(data.emails ? [{ label: "Unread Emails", value: data.emails.unread, sub: data.emails.unread === 0 ? "Inbox clear" : "In Outlook inbox", subColor: data.emails.unread > 0 ? "text-amber-400" : "text-emerald-400", href: "/portal/admin-assist/inbox", icon: Inbox }] : []),
         ].map((s) => (
-          <Link key={s.label} href={s.href} className="glass rounded-2xl p-5 border border-white/[0.06] hover:border-accent-blue/20 transition-colors group">
+          <Link key={s.label} href={s.href} className="glass rounded-xl p-4 border border-white/[0.06] hover:border-accent-blue/20 transition-colors group">
             <div className="flex items-center gap-2 mb-2">
               <s.icon size={14} className="text-text-muted" />
               <p className="text-text-muted text-xs">{s.label}</p>
             </div>
-            <p className="font-heading text-3xl font-bold text-text-primary">{s.value}</p>
+            <p className="font-heading text-2xl font-bold text-text-primary">{s.value}</p>
             <p className={`text-xs mt-1 ${s.subColor}`}>{s.sub}</p>
           </Link>
         ))}
@@ -89,9 +89,9 @@ export default function AdminBriefingPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Today's meetings */}
-        <div className="glass rounded-2xl p-5">
+        <div className="glass rounded-xl p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-text-primary">Today&apos;s Meetings</h2>
+            <h2 className="text-[13px] font-semibold text-text-primary">Today&apos;s Meetings</h2>
             <Link href="/portal/admin-assist/meetings" className="text-xs text-text-muted hover:text-accent-blue flex items-center gap-1 transition-colors">
               All meetings <ChevronRight size={12} />
             </Link>
@@ -109,7 +109,7 @@ export default function AdminBriefingPage() {
                     <Clock size={14} className="text-accent-blue" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-text-primary text-sm font-medium truncate">{m.title}</p>
+                    <p className="text-text-primary text-[13px] font-medium truncate">{m.title}</p>
                     <p className="text-text-muted text-xs mt-0.5">
                       {new Date(m.start_time).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}
                       {m.end_time && ` — ${new Date(m.end_time).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}`}
@@ -123,9 +123,9 @@ export default function AdminBriefingPage() {
         </div>
 
         {/* Priority tasks */}
-        <div className="glass rounded-2xl p-5">
+        <div className="glass rounded-xl p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-text-primary">Priority Tasks</h2>
+            <h2 className="text-[13px] font-semibold text-text-primary">Priority Tasks</h2>
             <Link href="/portal/admin-assist/tasks" className="text-xs text-text-muted hover:text-accent-blue flex items-center gap-1 transition-colors">
               All tasks <ChevronRight size={12} />
             </Link>
@@ -142,7 +142,7 @@ export default function AdminBriefingPage() {
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize ${PRIORITY_STYLE[task.priority] || PRIORITY_STYLE.medium}`}>
                     {task.priority}
                   </span>
-                  <p className="text-text-muted text-sm flex-1 truncate">{task.title}</p>
+                  <p className="text-text-muted text-[13px] flex-1 truncate">{task.title}</p>
                   {task.due_date && (
                     <p className={`text-[10px] flex-shrink-0 ${new Date(task.due_date) < new Date() ? "text-red-400" : "text-text-muted/50"}`}>
                       {new Date(task.due_date).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
@@ -168,7 +168,7 @@ export default function AdminBriefingPage() {
               <a.icon size={14} className="text-text-muted group-hover:text-accent-blue transition-colors" />
             </div>
             <div>
-              <p className="text-text-primary text-sm font-medium">{a.label}</p>
+              <p className="text-text-primary text-[13px] font-medium">{a.label}</p>
               <p className="text-text-muted text-xs">{a.desc}</p>
             </div>
           </Link>

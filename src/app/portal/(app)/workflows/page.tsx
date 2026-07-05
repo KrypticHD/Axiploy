@@ -67,8 +67,8 @@ export default function WorkflowsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold text-text-primary">Workflow Health</h1>
-          <p className="text-text-muted text-sm mt-1">Real-time status of your AI workforce automations.</p>
+          <h1 className="font-heading text-xl font-bold text-text-primary">Workflow Health</h1>
+          <p className="text-text-muted text-[13px] mt-1">Real-time status of your AI workforce automations.</p>
         </div>
         <button
           onClick={load}
@@ -99,7 +99,7 @@ export default function WorkflowsPage() {
           <Activity size={14} className="text-accent-blue" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-text-primary text-sm font-medium">Managed by Axiploy</p>
+          <p className="text-text-primary text-[13px] font-medium">Managed by Axiploy</p>
           <p className="text-text-muted text-xs mt-0.5">Workflow configuration, scheduling, and monitoring are fully managed by the Axiploy team. Contact us to make changes.</p>
         </div>
         <Link
@@ -111,11 +111,11 @@ export default function WorkflowsPage() {
       </div>
 
       {loading ? (
-        <div className="py-8 text-center text-text-muted text-sm">Loading workflows…</div>
+        <div className="py-8 text-center text-text-muted text-[13px]">Loading workflows…</div>
       ) : workflows.length === 0 ? (
         <div className="glass rounded-2xl p-10 text-center border border-white/[0.06]">
           <Activity size={28} className="text-text-muted/30 mx-auto mb-3" />
-          <p className="text-text-primary text-sm font-medium">No workflow activity yet</p>
+          <p className="text-text-primary text-[13px] font-medium">No workflow activity yet</p>
           <p className="text-text-muted text-xs mt-1">Activity will appear here once your AI employees start running automations.</p>
         </div>
       ) : (

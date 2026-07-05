@@ -255,7 +255,7 @@ export default function AskAxiployPage() {
                   <span className="text-2xl">⚡</span>
                 </div>
                 <h2 className="text-xl font-semibold text-text-primary">How can I help you today?</h2>
-                <p className="text-sm text-text-muted">
+                <p className="text-[13px] text-text-muted">
                   I have full visibility across your Digital Employees, onboarding records, approvals, reports and Knowledge Base. Just ask.
                 </p>
               </div>

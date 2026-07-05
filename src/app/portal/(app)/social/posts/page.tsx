@@ -81,10 +81,10 @@ export default function PostsPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-text-primary">All Posts</h1>
-          <p className="text-text-muted text-sm mt-1">Review, approve and track your AI-generated social media posts.</p>
+          <h1 className="font-heading text-xl font-semibold text-text-primary">All Posts</h1>
+          <p className="text-text-muted text-[13px] mt-1">Review, approve and track your AI-generated social media posts.</p>
         </div>
-        <Link href="/portal/social" className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm font-medium hover:bg-accent-blue/20 transition-colors">
+        <Link href="/portal/social" className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-[13px] font-medium hover:bg-accent-blue/20 transition-colors">
           + Create Posts
         </Link>
       </div>
@@ -93,7 +93,7 @@ export default function PostsPage() {
       <div className="flex gap-1 p-1 rounded-xl glass border border-white/[0.06] w-fit">
         {(["draft", "approved", "published"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${tab === t ? "bg-accent-blue/20 text-accent-blue" : "text-text-muted hover:text-text-primary"}`}>
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[13px] font-medium transition-colors capitalize ${tab === t ? "bg-accent-blue/20 text-accent-blue" : "text-text-muted hover:text-text-primary"}`}>
             {t === "draft" ? "Drafts" : t === "approved" ? "Approved" : "Published"}
             {counts[t] > 0 && (
               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${tab === t ? "bg-accent-blue/30 text-accent-blue" : "bg-white/[0.08] text-text-muted"}`}>
@@ -110,7 +110,7 @@ export default function PostsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="glass rounded-2xl p-12 text-center border border-dashed border-white/[0.08]">
-          <p className="text-text-muted text-sm">
+          <p className="text-text-muted text-[13px]">
             {tab === "draft" ? "No draft posts — " : tab === "approved" ? "No approved posts yet — " : "No published posts yet — "}
             {tab !== "published" && <Link href="/portal/social" className="text-accent-blue hover:underline">generate some posts</Link>}
             {tab === "published" && "approve posts first, then mark them as published after you post them."}
@@ -121,7 +121,7 @@ export default function PostsPage() {
           {filtered.map((post) => {
             const meta = PLATFORM_META[post.platform];
             return (
-              <div key={post.id} className="glass rounded-2xl p-5 border border-white/[0.06]">
+              <div key={post.id} className="glass rounded-xl p-4 border border-white/[0.06]">
                 <div className="flex items-start gap-4">
                   {post.image_url && (
                     <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 border border-white/[0.08]">
@@ -139,7 +139,7 @@ export default function PostsPage() {
                         <span className="text-text-muted/40 text-[10px]">· Approved {timeAgo(post.approved_at)}</span>
                       )}
                     </div>
-                    <p className="text-text-muted text-sm leading-relaxed line-clamp-3">{post.content}</p>
+                    <p className="text-text-muted text-[13px] leading-relaxed line-clamp-3">{post.content}</p>
                   </div>
                 </div>
 

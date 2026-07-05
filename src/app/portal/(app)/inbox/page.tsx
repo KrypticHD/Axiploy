@@ -262,7 +262,7 @@ export default function InboxPage() {
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
                 <CheckCircle2 size={22} className="text-emerald-400" />
               </div>
-              <p className="text-text-primary text-sm font-medium mb-1">All clear</p>
+              <p className="text-text-primary text-[13px] font-medium mb-1">All clear</p>
               <p className="text-text-muted text-[12px] leading-relaxed">
                 Your AI employees are on top of everything. New work will appear here.
               </p>
@@ -332,7 +332,7 @@ function EmptyDetail({ activity, itemCount }: { activity: ActivityLine[]; itemCo
           <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-3">
             <InboxIcon size={20} className="text-text-muted/60" />
           </div>
-          <p className="text-text-primary text-sm font-medium">
+          <p className="text-text-primary text-[13px] font-medium">
             {itemCount > 0 ? "Select an item to review" : "Nothing needs you right now"}
           </p>
           <p className="text-text-muted text-[12px] mt-1">

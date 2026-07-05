@@ -70,7 +70,7 @@ export default function NewEmployeePage() {
           <CheckCircle2 size={28} className="text-emerald-400" />
         </div>
         <h2 className="font-heading text-xl font-bold text-text-primary">Employee Added</h2>
-        <p className="text-text-muted text-sm">The AI Onboarding Assistant has been notified and will send the welcome email shortly.</p>
+        <p className="text-text-muted text-[13px]">The AI Onboarding Assistant has been notified and will send the welcome email shortly.</p>
         <p className="text-text-muted/60 text-xs">Redirecting to onboarding dashboard...</p>
       </div>
     );
@@ -79,17 +79,17 @@ export default function NewEmployeePage() {
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <Link href="/portal/onboarding" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary text-sm transition-colors mb-4">
+        <Link href="/portal/onboarding" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary text-[13px] transition-colors mb-4">
           <ArrowLeft size={14} /> Back to Onboarding
         </Link>
-        <h1 className="font-heading text-2xl font-bold text-text-primary">Add New Employee</h1>
-        <p className="text-text-muted text-sm mt-1">
+        <h1 className="font-heading text-xl font-bold text-text-primary">Add New Employee</h1>
+        <p className="text-text-muted text-[13px] mt-1">
           Submit this form to start the onboarding process. The AI Onboarding Assistant will handle the rest.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="glass rounded-2xl p-6 space-y-4">
+        <div className="glass rounded-xl p-5 space-y-4">
           <h2 className="font-heading font-semibold text-text-primary">Employee Details</h2>
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
@@ -123,7 +123,7 @@ export default function NewEmployeePage() {
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-6 space-y-4">
+        <div className="glass rounded-xl p-5 space-y-4">
           <h2 className="font-heading font-semibold text-text-primary">Required Documents</h2>
           <p className="text-text-muted text-xs">Select the documents required from this employee.</p>
           <div className="grid sm:grid-cols-2 gap-2">
@@ -141,7 +141,7 @@ export default function NewEmployeePage() {
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-6 space-y-3">
+        <div className="glass rounded-xl p-5 space-y-3">
           <h2 className="font-heading font-semibold text-text-primary">Notes</h2>
           <textarea
             name="notes"

@@ -20,15 +20,15 @@ const accentMap = {
 export default function MetricCard({ label, value, icon: Icon, accent = "default", sub }: MetricCardProps) {
   const a = accentMap[accent];
   return (
-    <div className={`glass rounded-2xl p-5 border ${a.border}`}>
-      <div className="flex items-start justify-between mb-3">
-        <p className="text-text-muted text-xs font-medium">{label}</p>
-        <div className={`w-8 h-8 rounded-lg ${a.bg} flex items-center justify-center`}>
-          <Icon size={15} className={a.icon} />
+    <div className={`glass rounded-xl p-4 border ${a.border}`}>
+      <div className="flex items-start justify-between mb-2.5">
+        <p className="text-text-muted text-[11px] font-medium">{label}</p>
+        <div className={`w-7 h-7 rounded-lg ${a.bg} flex items-center justify-center`}>
+          <Icon size={13} className={a.icon} />
         </div>
       </div>
-      <p className="font-heading text-2xl font-bold text-text-primary">{value}</p>
-      {sub && <p className="text-text-muted text-xs mt-1">{sub}</p>}
+      <p className="font-heading text-xl font-bold text-text-primary leading-none">{value}</p>
+      {sub && <p className="text-text-muted text-[11px] mt-1.5">{sub}</p>}
     </div>
   );
 }
