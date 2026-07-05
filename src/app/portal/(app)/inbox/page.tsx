@@ -14,7 +14,7 @@ type Priority = "urgent" | "action" | "review" | "info";
 
 interface WorkItem {
   id: string;
-  source: "approval" | "email_draft" | "social_post" | "missing_docs" | "risk" | "compliance" | "workflow_failure" | "ticket_review" | "ticket_expiring";
+  source: "approval" | "email_draft" | "social_post" | "missing_docs" | "risk" | "compliance" | "workflow_failure" | "ticket_review" | "ticket_expiring" | "incident_review";
   agentType: string;
   title: string;
   subtitle: string;
@@ -176,6 +176,12 @@ export default function InboxPage() {
       body: JSON.stringify({ action: "send_doc_reminder", onboardingId: rowId(item) }),
     }), "Reminder email sent ✓");
 
+  const acknowledgeIncident = (item: WorkItem) =>
+    act(item, () => fetch("/api/portal/inbox", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "acknowledge_incident", incidentId: rowId(item) }),
+    }), "Acknowledged ✓");
+
   const approveDocument = (item: WorkItem) =>
     act(item, () => fetch("/api/portal/inbox", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -316,7 +322,7 @@ export default function InboxPage() {
             item={selected}
             acting={acting}
             onBack={() => setMobileDetail(false)}
-            actions={{ approve, reject, markEmailSent, deleteEmailDraft, approvePost, rejectPost, sendDocReminder, renewCompliance, approveDocument, requestReupload, renewTicket }}
+            actions={{ approve, reject, markEmailSent, deleteEmailDraft, approvePost, rejectPost, sendDocReminder, renewCompliance, approveDocument, requestReupload, renewTicket, acknowledgeIncident }}
           />
         ) : (
           <EmptyDetail activity={activity} itemCount={items.length} />
@@ -398,6 +404,7 @@ interface Actions {
   approveDocument: (i: WorkItem) => void;
   requestReupload: (i: WorkItem) => void;
   renewTicket: (i: WorkItem, d: string) => void;
+  acknowledgeIncident: (i: WorkItem) => void;
 }
 
 function DetailPane({ item, acting, onBack, actions }: { item: WorkItem; acting: boolean; onBack: () => void; actions: Actions }) {
@@ -657,6 +664,71 @@ function DetailPane({ item, acting, onBack, actions }: { item: WorkItem; acting:
         </button>
       );
       break;
+    }
+
+    case "incident_review": {
+      const severity = String(p.severity || "medium");
+      const severityColor = severity === "critical" || severity === "high" ? "text-red-400 border-red-500/15" : "text-amber-400 border-amber-500/15";
+      return (
+        <motion.div
+          key={item.id}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="flex flex-col flex-1 min-h-0"
+        >
+          {header}
+          <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 min-h-0">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2 mb-4">
+                <span className={`text-[11px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border ${severityColor}`}>
+                  {severity}
+                </span>
+                <span className="text-[11px] text-text-muted capitalize">{String(p.incident_type || "other").replace("_", " ")}</span>
+                {p.notifiable ? (
+                  <span className="text-[11px] font-medium text-red-400 px-2 py-0.5 rounded-full border border-red-500/15">Notifiable</span>
+                ) : null}
+              </div>
+
+              {p.location ? <MetaRow icon={FileWarning} label="Location" value={String(p.location)} /> : null}
+              <MetaRow icon={Clock} label="Reported" value={timeAgo(String(p.created_at)) + " ago"} />
+              <MetaRow icon={ShieldCheck} label="Reported by" value={String(p.reported_by_name || "Anonymous")} />
+
+              <div className={`glass rounded-xl border p-4 mt-4 ${severityColor.split(" ")[1]}`}>
+                <p className="text-[13px] font-semibold text-text-primary mb-2">AI-drafted report</p>
+                <p className="text-[13px] text-text-muted leading-relaxed whitespace-pre-wrap">{String(p.ai_summary || p.description)}</p>
+              </div>
+
+              {Array.isArray(p.ai_suggested_actions) && (p.ai_suggested_actions as string[]).length > 0 && (
+                <div className="glass rounded-xl border border-white/[0.06] p-4 mt-3">
+                  <p className="text-[13px] font-semibold text-text-primary mb-2">Suggested corrective actions</p>
+                  <ul className="space-y-1.5">
+                    {(p.ai_suggested_actions as string[]).map((a, i) => (
+                      <li key={i} className="text-[13px] text-text-muted flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan/70 mt-1.5 shrink-0" />
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {p.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={String(p.photo_url)} alt="Incident" className="rounded-xl border border-white/[0.08] max-h-64 object-cover mt-3" />
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 px-5 sm:px-8 py-4 border-t border-white/[0.06] shrink-0">
+            <button disabled={acting} onClick={() => actions.acknowledgeIncident(item)} className={btnGreen}>
+              <CheckCircle2 size={14} /> Acknowledge
+            </button>
+            <Link href="/portal/safety" className={btnGhost}>
+              <ExternalLink size={13} /> Open Safety Register
+            </Link>
+          </div>
+        </motion.div>
+      );
     }
 
     case "workflow_failure":

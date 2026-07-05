@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 
-const EMPTY = { onboarding: false, admin: false, growth: false, social: false, compliance: false, agents: [] };
+const EMPTY = { onboarding: false, admin: false, growth: false, social: false, compliance: false, safety: false, agents: [] };
 
 export async function GET(req: NextRequest) {
   const raw = req.cookies.get("axiploy_session")?.value;
@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
     growth: types.includes("growth"),
     social: types.includes("social"),
     compliance: types.includes("compliance"),
+    safety: types.includes("safety"),
     agents,
   });
 }

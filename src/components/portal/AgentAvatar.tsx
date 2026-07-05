@@ -6,6 +6,7 @@ const AGENT_STYLES: Record<string, { short: string; gradient: string; label: str
   social: { short: "SO", gradient: "from-fuchsia-400 to-accent-blue", label: "AI Social" },
   growth: { short: "GR", gradient: "from-indigo-400 to-accent-cyan", label: "AI Growth" },
   compliance: { short: "CO", gradient: "from-amber-400 to-red-400", label: "AI Compliance" },
+  safety: { short: "SF", gradient: "from-red-400 to-amber-400", label: "AI Safety" },
 };
 
 const FALLBACK = { short: "AI", gradient: "from-accent-blue to-accent-cyan", label: "AI Employee" };

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   LayoutDashboard, Bot, UserCheck, BarChart2, Activity, Settings,
   BookOpen, Mail, GitBranch, LifeBuoy, Inbox, Shield, Sparkles,
-  Search, MessageSquare, FilePlus, Calendar, ListTodo, CheckSquare, ShieldCheck,
+  Search, MessageSquare, FilePlus, Calendar, ListTodo, CheckSquare, ShieldCheck, ShieldAlert,
 } from "lucide-react";
 
 interface Command {
@@ -39,6 +39,7 @@ export default function CommandPalette({ onAsk }: { onAsk: (query?: string) => v
     { label: "Post Studio", href: "/portal/social", icon: Sparkles, keywords: "social media" },
     { label: "Scheduled Posts", href: "/portal/social/posts", icon: Calendar, keywords: "social" },
     { label: "Compliance Register", href: "/portal/compliance", icon: Shield, keywords: "licences insurance expiry" },
+    { label: "Safety Register", href: "/portal/safety", icon: ShieldAlert, keywords: "incidents near miss corrective actions" },
     { label: "Workflow Health", href: "/portal/workflows", icon: GitBranch },
     { label: "Reports", href: "/portal/reports", icon: BarChart2 },
     { label: "Activity", href: "/portal/activity", icon: Activity, keywords: "log history" },

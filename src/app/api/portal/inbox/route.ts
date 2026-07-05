@@ -8,8 +8,8 @@ type Priority = "urgent" | "action" | "review" | "info";
 
 export interface WorkItem {
   id: string;
-  source: "approval" | "email_draft" | "social_post" | "missing_docs" | "risk" | "compliance" | "workflow_failure" | "ticket_review" | "ticket_expiring";
-  agentType: "onboarding" | "admin" | "social" | "compliance" | "growth";
+  source: "approval" | "email_draft" | "social_post" | "missing_docs" | "risk" | "compliance" | "workflow_failure" | "ticket_review" | "ticket_expiring" | "incident_review";
+  agentType: "onboarding" | "admin" | "social" | "compliance" | "growth" | "safety";
   title: string;
   subtitle: string;
   priority: Priority;
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   const supabase = supabaseAdmin();
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [approvals, emailDrafts, socialPosts, onboarding, compliance, workflowFails, ticketsNeedingReview, expiringTickets] = await Promise.all([
+  const [approvals, emailDrafts, socialPosts, onboarding, compliance, workflowFails, ticketsNeedingReview, expiringTickets, incidentsRes] = await Promise.all([
     supabase.from("approvals").select("*").eq("client_id", clientId).eq("status", "pending"),
     supabase.from("admin_email_drafts").select("*").eq("client_id", clientId).eq("status", "draft"),
     supabase.from("social_posts").select("*").eq("client_id", clientId).eq("status", "draft"),
@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
       .eq("client_id", clientId).eq("validation_status", "needs_review"),
     supabase.from("documents").select("*, onboarding:onboarding_id(employee_name, token)")
       .eq("client_id", clientId).eq("validation_status", "auto_approved").not("expiry_date", "is", null),
+    supabase.from("safety_incidents").select("*").eq("client_id", clientId).in("status", ["new", "investigating"]),
   ]);
 
   const items: WorkItem[] = [];
@@ -180,6 +181,20 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  for (const incident of incidentsRes.data || []) {
+    const isUrgent = incident.severity === "high" || incident.severity === "critical" || incident.notifiable;
+    items.push({
+      id: `incident_review:${incident.id}`,
+      source: "incident_review",
+      agentType: "safety",
+      title: `${incident.incident_type.replace("_", " ")} reported${incident.location ? ` — ${incident.location}` : ""}`,
+      subtitle: incident.ai_summary || incident.description,
+      priority: isUrgent ? "urgent" : "action",
+      createdAt: incident.created_at,
+      payload: incident,
+    });
+  }
+
   for (const w of workflowFails.data || []) {
     items.push({
       id: `workflow_failure:${w.id}`,
@@ -214,8 +229,34 @@ export async function POST(req: NextRequest) {
   if (!clientId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
   const body = await req.json();
-  const { action, onboardingId, documentId } = body;
+  const { action, onboardingId, documentId, incidentId } = body;
   const supabase = supabaseAdmin();
+
+  if (action === "acknowledge_incident" && incidentId) {
+    const { data: incident } = await supabase
+      .from("safety_incidents")
+      .select("*")
+      .eq("id", incidentId)
+      .eq("client_id", clientId)
+      .single();
+
+    if (!incident) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    await supabase
+      .from("safety_incidents")
+      .update({ status: "investigating", updated_at: new Date().toISOString() })
+      .eq("id", incidentId);
+
+    await supabase.from("activity_log").insert({
+      client_id: clientId,
+      digital_employee: "AI Safety Assistant",
+      action: `Incident acknowledged: ${incident.incident_type.replace("_", " ")}`,
+      details: `${incident.severity} severity · now under investigation`,
+      status: "success",
+    });
+
+    return NextResponse.json({ ok: true });
+  }
 
   if (action === "approve_document" && documentId) {
     const { data: doc } = await supabase

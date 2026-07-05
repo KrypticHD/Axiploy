@@ -6,7 +6,7 @@ import {
   Plus, Trash2, UserCheck, ClipboardList, TrendingUp, Bot,
   Settings, ChevronDown, ChevronUp, X, PlusCircle, Check,
   Copy, Clock, Zap, AlertCircle, MinusCircle, CheckCircle2,
-  AlertTriangle, Share2,
+  AlertTriangle, Share2, ShieldAlert,
 } from "lucide-react";
 
 const AGENT_TEMPLATES = [
@@ -15,6 +15,7 @@ const AGENT_TEMPLATES = [
   { type: "growth", name: "AI Growth Assistant", description: "Lead follow-up, client engagement, pipeline management.", icon: TrendingUp },
   { type: "social", name: "AI Social Media Manager", description: "Generate platform posts from photos, manage content calendar, monitor engagement.", icon: Share2 },
   { type: "compliance", name: "AI Compliance Assistant", description: "Track licences, certifications, insurance and policies. Automated reminders before anything expires.", icon: AlertTriangle },
+  { type: "safety", name: "AI Safety Assistant", description: "Workers report incidents and near-misses via a public link. AI classifies severity, drafts the formal report, and escalates urgent cases instantly.", icon: ShieldAlert },
 ];
 
 const DEFAULT_DOCS = ["Employment Contract", "Tax File Number Declaration", "Right to Work", "Bank Details", "Emergency Contact Form"];
@@ -44,6 +45,9 @@ interface AgentConfig {
   emailSignature?: string;
   outlookEmail?: string;
   taskReminderDays?: number;
+  // Safety assistant fields
+  escalationContacts?: string[];
+  anonymousReportingAllowed?: boolean;
 }
 
 interface Agent {
@@ -819,6 +823,189 @@ function SocialConfigPanel({
   );
 }
 
+function safetySetupChecklist(config: AgentConfig | undefined): { label: string; ok: boolean }[] {
+  return [
+    { label: "At least one escalation contact added", ok: !!(config?.escalationContacts?.length) },
+  ];
+}
+
+function SafetyConfigPanel({
+  agent, clientId, lastRun, allClients, onSaved,
+}: {
+  agent: Agent;
+  clientId: string;
+  lastRun: LastRun | null;
+  allClients: { id: string; name: string }[];
+  onSaved: (id: string, config: AgentConfig) => void;
+}) {
+  const cfg = agent.config || {};
+  const [escalationContacts, setEscalationContacts] = useState<string[]>(cfg.escalationContacts ?? []);
+  const [anonymousReportingAllowed, setAnonymousReportingAllowed] = useState(cfg.anonymousReportingAllowed ?? true);
+  const [newContact, setNewContact] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [showClone, setShowClone] = useState(false);
+  const [cloning, setCloning] = useState(false);
+
+  const status = liveStatus(agent.status, lastRun);
+  const checklist = safetySetupChecklist({ escalationContacts });
+  const allGreen = checklist.every((c) => c.ok);
+
+  function addContact() {
+    const t = newContact.trim();
+    if (!t || escalationContacts.includes(t)) return;
+    setEscalationContacts((prev) => [...prev, t]);
+    setNewContact("");
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    const config: AgentConfig = { escalationContacts, anonymousReportingAllowed };
+    const res = await fetch(`/api/admin/clients/${clientId}/agents`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ agentId: agent.id, config }),
+    });
+    setSaving(false);
+    if (res.ok) { onSaved(agent.id, config); setSaved(true); setTimeout(() => setSaved(false), 2000); }
+  }
+
+  async function handleClone(fromClientId: string) {
+    setCloning(true);
+    const res = await fetch(`/api/admin/clients/${fromClientId}/agents/clone?type=safety`);
+    const data = await res.json();
+    if (data.config) {
+      const c: AgentConfig = data.config;
+      if (c.escalationContacts) setEscalationContacts(c.escalationContacts);
+      if (c.anonymousReportingAllowed !== undefined) setAnonymousReportingAllowed(c.anonymousReportingAllowed);
+    }
+    setCloning(false);
+    setShowClone(false);
+  }
+
+  return (
+    <div className="mt-3 space-y-5">
+      {/* AI Overview */}
+      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider">AI Overview</p>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full ${status.dot} ${status.label === "Running" ? "animate-pulse" : ""}`} />
+            <span className={`text-xs font-medium ${status.color}`}>{status.label}</span>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Incidents Logged", value: agent.tasks_completed ?? 0 },
+            { label: "Hours Saved", value: agent.hours_saved ?? 0 },
+            { label: "Success Rate", value: `${agent.success_rate ?? 100}%` },
+          ].map((s) => (
+            <div key={s.label} className="text-center">
+              <p className="font-heading text-xl font-bold text-text-primary">{s.value}</p>
+              <p className="text-text-muted text-[10px] mt-0.5">{s.label}</p>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5 mt-4 pt-3 border-t border-white/[0.06]">
+          <Clock size={11} className="text-text-muted/50" />
+          <span className="text-text-muted/50 text-[10px]">Last run: {formatLastRun(lastRun)}</span>
+          <span className="text-text-muted/30 text-[10px] ml-auto">v{AGENT_VERSION}</span>
+        </div>
+      </div>
+
+      {/* Setup checklist */}
+      <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider">Setup Checklist</p>
+          {allGreen
+            ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ready for production</span>
+            : <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">Incomplete</span>
+          }
+        </div>
+        <div className="space-y-2">
+          {checklist.map((item) => (
+            <div key={item.label} className="flex items-center gap-2">
+              {item.ok ? <CheckCircle2 size={13} className="text-emerald-400 flex-shrink-0" /> : <AlertTriangle size={13} className="text-amber-400 flex-shrink-0" />}
+              <span className={`text-xs ${item.ok ? "text-text-muted" : "text-amber-400/80"}`}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Config form */}
+      <div className="p-5 rounded-xl bg-white/[0.02] border border-white/[0.08] space-y-5">
+        {/* Clone banner */}
+        {allClients.length > 0 && (
+          <div>
+            <button onClick={() => setShowClone(!showClone)} className="flex items-center gap-2 text-xs text-accent-cyan hover:text-accent-blue transition-colors">
+              <Copy size={12} /> Copy configuration from another client
+              {showClone ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            </button>
+            {showClone && (
+              <div className="mt-2 p-3 rounded-lg bg-white/[0.03] border border-white/[0.08] space-y-1.5">
+                {cloning && <p className="text-text-muted text-xs">Copying...</p>}
+                {!cloning && allClients.map((c) => (
+                  <button key={c.id} onClick={() => handleClone(c.id)}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm text-text-muted hover:text-text-primary hover:bg-white/[0.04] transition-colors">
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Escalation contacts */}
+        <div>
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Escalation Contacts</p>
+          <p className="text-text-muted/50 text-[10px] mb-3">
+            High/critical or notifiable incidents email these people immediately, instead of waiting for a daily digest.
+            Falls back to the client admin if none are set.
+          </p>
+          <div className="space-y-2 mb-3">
+            {escalationContacts.map((email) => (
+              <div key={email} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+                <span className="text-text-primary text-sm">{email}</span>
+                <button onClick={() => setEscalationContacts((prev) => prev.filter((e) => e !== email))} className="text-text-muted hover:text-red-400 transition-colors">
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input value={newContact} onChange={(e) => setNewContact(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addContact()}
+              type="email" placeholder="safety.officer@site.com" className="flex-1 px-3 py-2 text-sm bg-white/[0.04] border border-white/[0.10] rounded-lg text-text-primary placeholder:text-text-muted/40 focus:outline-none focus:border-accent-blue/40" />
+            <button onClick={addContact} disabled={!newContact.trim()}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-accent-blue/10 border border-accent-blue/20 text-accent-blue text-sm hover:bg-accent-blue/20 transition-colors disabled:opacity-40">
+              <PlusCircle size={14} /> Add
+            </button>
+          </div>
+        </div>
+
+        {/* Toggles */}
+        <div>
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Options</p>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
+            <div>
+              <p className="text-text-primary text-sm">Allow Anonymous Reporting</p>
+              <p className="text-text-muted text-xs mt-0.5">Workers can submit incidents without giving their name — encourages honest near-miss reporting</p>
+            </div>
+            <Toggle value={anonymousReportingAllowed} onChange={setAnonymousReportingAllowed} />
+          </div>
+        </div>
+
+        {/* Save */}
+        <div className="pt-1">
+          <button onClick={handleSave} disabled={saving}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-accent-blue text-white text-sm font-medium hover:bg-accent-blue-light transition-colors disabled:opacity-50">
+            {saved ? <><Check size={14} /> Saved</> : saving ? "Saving..." : "Save Configuration"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AgentManager({
   clientId, agents: initialAgents, employeesManaged, lastRun, allClients,
 }: {
@@ -870,7 +1057,7 @@ export default function AgentManager({
   }
 
   const typeIcons: Record<string, React.FC<{ size?: number; className?: string }>> = {
-    onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp, social: Share2, compliance: AlertTriangle,
+    onboarding: UserCheck, admin: ClipboardList, growth: TrendingUp, social: Share2, compliance: AlertTriangle, safety: ShieldAlert,
   };
 
   return (
@@ -951,7 +1138,7 @@ export default function AgentManager({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {(agent.type === "onboarding" || agent.type === "social" || agent.type === "admin" || agent.type === "compliance") && (
+                      {(agent.type === "onboarding" || agent.type === "social" || agent.type === "admin" || agent.type === "compliance" || agent.type === "safety") && (
                         <button onClick={() => setConfiguringId(isConfiguring ? null : agent.id)}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                             isConfiguring ? "bg-accent-blue/20 border-accent-blue/30 text-accent-blue" : "bg-white/[0.04] border-white/[0.10] text-text-muted hover:text-text-primary hover:bg-white/[0.08]"
@@ -994,6 +1181,17 @@ export default function AgentManager({
                   {isConfiguring && agent.type === "admin" && (
                     <div className="px-4 pb-4">
                       <AdminConfigPanel
+                        agent={agent}
+                        clientId={clientId}
+                        lastRun={lastRun}
+                        allClients={allClients}
+                        onSaved={handleConfigSaved}
+                      />
+                    </div>
+                  )}
+                  {isConfiguring && agent.type === "safety" && (
+                    <div className="px-4 pb-4">
+                      <SafetyConfigPanel
                         agent={agent}
                         clientId={clientId}
                         lastRun={lastRun}

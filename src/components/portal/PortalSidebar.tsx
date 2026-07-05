@@ -9,7 +9,7 @@ import {
   BarChart2, Activity, FilePlus, Settings, X, MessageSquare,
   BookOpen, Mail, GitBranch, LifeBuoy, ChevronDown, ChevronRight, FolderOpen,
   Sparkles, Calendar, Share2, ClipboardList, ListTodo, Inbox, FileText, LayoutGrid, Shield,
-  ShieldCheck,
+  ShieldCheck, ShieldAlert,
 } from "lucide-react";
 import AgentAvatar from "./AgentAvatar";
 
@@ -60,6 +60,12 @@ const complianceNavItems = [
 
 const COMPLIANCE_PATHS = ["/portal/compliance"];
 
+const safetyNavItems = [
+  { href: "/portal/safety", label: "Safety Register", icon: ShieldAlert },
+];
+
+const SAFETY_PATHS = ["/portal/safety"];
+
 interface Agent {
   type: string;
   name: string;
@@ -84,6 +90,8 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   const [adminOpen, setAdminOpen] = useState(false);
   const [hasCompliance, setHasCompliance] = useState(false);
   const [complianceOpen, setComplianceOpen] = useState(false);
+  const [hasSafety, setHasSafety] = useState(false);
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
 
   useEffect(() => {
@@ -98,6 +106,9 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
     }
     if (COMPLIANCE_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
       setComplianceOpen(true);
+    }
+    if (SAFETY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+      setSafetyOpen(true);
     }
   }, [pathname]);
 
@@ -114,6 +125,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
         setHasSocial(!!d.social);
         setHasAdmin(!!d.admin);
         setHasCompliance(!!d.compliance);
+        setHasSafety(!!d.safety);
         setAgents(d.agents || []);
       })
       .catch(() => {});
@@ -183,6 +195,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   const socialActive = SOCIAL_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const adminActive = ADMIN_ASSIST_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
   const complianceActive = COMPLIANCE_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+  const safetyActive = SAFETY_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   const content = (
     <div className="flex flex-col h-full">
@@ -218,6 +231,7 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
           {hasOnboarding && renderGroup("AI Onboarding", FolderOpen, onboardingOpen, setOnboardingOpen, onboardingActive, onboardingNavItems)}
           {hasSocial && renderGroup("AI Social", Share2, socialOpen, setSocialOpen, socialActive, socialNavItems)}
           {hasCompliance && renderGroup("AI Compliance", Shield, complianceOpen, setComplianceOpen, complianceActive, complianceNavItems)}
+          {hasSafety && renderGroup("AI Safety", ShieldAlert, safetyOpen, setSafetyOpen, safetyActive, safetyNavItems)}
 
           <div className="my-2 border-t border-white/[0.05]" />
 
