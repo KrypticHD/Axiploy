@@ -8,7 +8,7 @@ type Priority = "urgent" | "action" | "review" | "info";
 
 export interface WorkItem {
   id: string;
-  source: "approval" | "email_draft" | "social_post" | "missing_docs" | "risk" | "compliance" | "workflow_failure";
+  source: "approval" | "email_draft" | "social_post" | "missing_docs" | "risk" | "compliance" | "workflow_failure" | "ticket_review" | "ticket_expiring";
   agentType: "onboarding" | "admin" | "social" | "compliance" | "growth";
   title: string;
   subtitle: string;
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
   const supabase = supabaseAdmin();
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  const [approvals, emailDrafts, socialPosts, onboarding, compliance, workflowFails] = await Promise.all([
+  const [approvals, emailDrafts, socialPosts, onboarding, compliance, workflowFails, ticketsNeedingReview, expiringTickets] = await Promise.all([
     supabase.from("approvals").select("*").eq("client_id", clientId).eq("status", "pending"),
     supabase.from("admin_email_drafts").select("*").eq("client_id", clientId).eq("status", "draft"),
     supabase.from("social_posts").select("*").eq("client_id", clientId).eq("status", "draft"),
@@ -45,6 +45,10 @@ export async function GET(req: NextRequest) {
     supabase.from("compliance_items").select("*").eq("client_id", clientId),
     supabase.from("workflow_runs").select("*").eq("client_id", clientId)
       .eq("status", "failed").gte("created_at", weekAgo),
+    supabase.from("documents").select("*, onboarding:onboarding_id(employee_name, token)")
+      .eq("client_id", clientId).eq("validation_status", "needs_review"),
+    supabase.from("documents").select("*, onboarding:onboarding_id(employee_name, token)")
+      .eq("client_id", clientId).eq("validation_status", "auto_approved").not("expiry_date", "is", null),
   ]);
 
   const items: WorkItem[] = [];
@@ -136,6 +140,46 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  type DocWithOnboarding = {
+    id: string; name: string; validation_status: string; validation_notes: string | null;
+    file_url: string | null; expiry_date: string | null; created_at: string;
+    onboarding_id: string; onboarding: { employee_name: string; token: string } | null;
+  };
+
+  for (const d of (ticketsNeedingReview.data || []) as DocWithOnboarding[]) {
+    const employeeName = d.onboarding?.employee_name || "A worker";
+    items.push({
+      id: `ticket_review:${d.id}`,
+      source: "ticket_review",
+      agentType: "onboarding",
+      title: `${d.name} needs a quick check — ${employeeName}`,
+      subtitle: d.validation_notes || "AI Onboarding flagged this document for manual review",
+      priority: "action",
+      createdAt: d.created_at,
+      payload: { ...d, employeeName },
+    });
+  }
+
+  for (const d of (expiringTickets.data || []) as DocWithOnboarding[]) {
+    if (!d.expiry_date) continue;
+    const daysLeft = Math.floor((new Date(d.expiry_date).getTime() - today.getTime()) / 86400000);
+    if (daysLeft > 30) continue;
+    const employeeName = d.onboarding?.employee_name || "A worker";
+    const expired = daysLeft < 0;
+    items.push({
+      id: `ticket_expiring:${d.id}`,
+      source: "ticket_expiring",
+      agentType: "onboarding",
+      title: expired
+        ? `${employeeName}'s ${d.name} has expired`
+        : `${employeeName}'s ${d.name} expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`,
+      subtitle: "AI Onboarding is tracking this ticket — request a renewal to keep this worker site-ready",
+      priority: daysLeft <= 7 ? "urgent" : "action",
+      createdAt: d.created_at,
+      payload: { ...d, employeeName, daysLeft },
+    });
+  }
+
   for (const w of workflowFails.data || []) {
     items.push({
       id: `workflow_failure:${w.id}`,
@@ -169,8 +213,128 @@ export async function POST(req: NextRequest) {
   const clientId = getClientId(req);
   if (!clientId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-  const { action, onboardingId } = await req.json();
+  const body = await req.json();
+  const { action, onboardingId, documentId } = body;
   const supabase = supabaseAdmin();
+
+  if (action === "approve_document" && documentId) {
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("*, onboarding:onboarding_id(id, employee_name, client_id, manager, role)")
+      .eq("id", documentId)
+      .eq("client_id", clientId)
+      .single();
+
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    await supabase
+      .from("documents")
+      .update({ validation_status: "auto_approved", validation_notes: null })
+      .eq("id", documentId);
+
+    await supabase.from("activity_log").insert({
+      client_id: clientId,
+      digital_employee: "AI Onboarding Assistant",
+      action: `Document manually approved: ${doc.name}`,
+      details: `${doc.onboarding?.employee_name || "Worker"} · approved after review`,
+      status: "success",
+    });
+
+    // Re-check whether onboarding is now fully complete (same gate as the upload route)
+    const ob = doc.onboarding;
+    if (ob) {
+      const { data: allDocs } = await supabase
+        .from("documents")
+        .select("required, received, validation_status")
+        .eq("onboarding_id", ob.id);
+
+      const required = (allDocs || []).filter((d) => d.required);
+      const received = required.filter((d) => d.received);
+      const needsReview = required.filter((d) => d.validation_status === "needs_review");
+      const missingDocuments = required.length - received.length;
+      const allComplete = missingDocuments === 0 && needsReview.length === 0;
+
+      if (allComplete) {
+        await supabase.from("onboarding").update({ status: "Ready for Review" }).eq("id", ob.id);
+      }
+    }
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "request_reupload" && documentId) {
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("*, onboarding:onboarding_id(employee_name, email, token)")
+      .eq("id", documentId)
+      .eq("client_id", clientId)
+      .single();
+
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const ob = doc.onboarding as { employee_name: string; email: string | null; token: string } | null;
+    if (!ob?.email) return NextResponse.json({ error: "No email on record for this worker" }, { status: 400 });
+
+    const portalLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://axiploy.vercel.app"}/onboard/${ob.token}`;
+
+    const html = emailWrapper(`
+      <div class="card">
+        <div class="heading">📄 Please re-upload: ${doc.name}</div>
+        <div class="sub">Hi ${ob.employee_name.split(" ")[0]}, we need a clearer or updated copy of this document.</div>
+        ${doc.validation_notes ? `<div class="item"><div class="dot" style="background:#f59e0b"></div><div>${doc.validation_notes}</div></div>` : ""}
+        <p style="margin-top:16px">Please upload it again using your secure link:</p>
+        <a href="${portalLink}" class="btn">Upload document →</a>
+      </div>
+    `);
+
+    const result = await sendEmail({
+      to: ob.email,
+      subject: `Please re-upload: ${doc.name}`,
+      html,
+    });
+
+    if (!result.ok) return NextResponse.json({ error: result.error || "Email failed" }, { status: 500 });
+
+    await supabase
+      .from("documents")
+      .update({ validation_status: "pending", received: false, validation_notes: null })
+      .eq("id", documentId);
+
+    await supabase.from("activity_log").insert({
+      client_id: clientId,
+      digital_employee: "AI Onboarding Assistant",
+      action: `Requested re-upload: ${doc.name}`,
+      details: `${ob.employee_name} · ${doc.validation_notes || "flagged for review"}`,
+      status: "warning",
+    });
+
+    return NextResponse.json({ ok: true });
+  }
+
+  if (action === "renew_document" && documentId && body.expiryDate) {
+    const { data: doc } = await supabase
+      .from("documents")
+      .select("*, onboarding:onboarding_id(employee_name)")
+      .eq("id", documentId)
+      .eq("client_id", clientId)
+      .single();
+
+    if (!doc) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    await supabase
+      .from("documents")
+      .update({ expiry_date: body.expiryDate, validation_status: "auto_approved", validation_notes: null })
+      .eq("id", documentId);
+
+    await supabase.from("activity_log").insert({
+      client_id: clientId,
+      digital_employee: "AI Onboarding Assistant",
+      action: `Ticket renewed: ${doc.name}`,
+      details: `${doc.onboarding?.employee_name || "Worker"} · new expiry ${body.expiryDate}`,
+      status: "success",
+    });
+
+    return NextResponse.json({ ok: true });
+  }
 
   if (action === "send_doc_reminder" && onboardingId) {
     const { data: ob } = await supabase

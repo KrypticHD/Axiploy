@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail, emailWrapper } from "@/lib/email";
+import { validateDocument, decideValidationStatus } from "@/lib/document-validation";
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/heic", "image/webp"];
@@ -42,7 +43,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   // Upload to Supabase Storage
   const ext = file.name.split(".").pop() || "pdf";
   const storagePath = `${token}/${documentId}/${Date.now()}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
 
   const { error: uploadError } = await supabaseAdmin()
     .storage
@@ -58,31 +60,59 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     .from("onboarding-documents")
     .getPublicUrl(storagePath);
 
+  // AI Onboarding Assistant validates the ticket — type, holder name, expiry, legibility.
+  // Non-fatal: falls back to auto-approving if validation can't run.
+  const { data: agentRow } = await supabaseAdmin()
+    .from("digital_employees")
+    .select("config")
+    .eq("client_id", onboarding.client_id)
+    .eq("type", "onboarding")
+    .maybeSingle();
+  const autoApproveThreshold = agentRow?.config?.autoApproveThreshold ?? 0.75;
+
+  const validation = await validateDocument(
+    arrayBuffer,
+    file.type,
+    documentName || "document",
+    onboarding.employee_name
+  );
+  const { status: validationStatus, notes: validationNotes } = decideValidationStatus(validation, autoApproveThreshold);
+
   // Update document record
   await supabaseAdmin()
     .from("documents")
-    .update({ received: true, file_url: publicUrl, received_at: new Date().toISOString() })
+    .update({
+      received: true,
+      file_url: publicUrl,
+      received_at: new Date().toISOString(),
+      expiry_date: validation.expiryDate,
+      validation_status: validationStatus,
+      validation_notes: validationNotes,
+      ai_confidence: validation.confidence,
+    })
     .eq("id", documentId)
     .eq("onboarding_id", onboarding.id);
 
   // Recalculate progress
   const { data: allDocs } = await supabaseAdmin()
     .from("documents")
-    .select("required, received")
+    .select("required, received, validation_status")
     .eq("onboarding_id", onboarding.id);
 
   const required = (allDocs || []).filter((d) => d.required);
   const received = required.filter((d) => d.received);
+  const needsReview = required.filter((d) => d.validation_status === "needs_review");
   const missingDocuments = required.length - received.length;
   const progress = required.length > 0 ? Math.round((received.length / required.length) * 100) : 0;
-  const allComplete = missingDocuments === 0;
+  const allUploaded = missingDocuments === 0;
+  const allComplete = allUploaded && needsReview.length === 0;
 
   await supabaseAdmin()
     .from("onboarding")
     .update({
       missing_documents: missingDocuments,
       progress,
-      status: allComplete ? "Ready for Review" : "In Progress",
+      status: allComplete ? "Ready for Review" : allUploaded ? "Ready for Review" : "In Progress",
     })
     .eq("id", onboarding.id);
 
@@ -90,9 +120,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   await supabaseAdmin().from("activity_log").insert({
     client_id: onboarding.client_id,
     digital_employee: "AI Onboarding Assistant",
-    action: `Document received: ${documentName || "Document"}`,
-    details: `Uploaded by ${onboarding.employee_name} · ${received.length}/${required.length} documents complete`,
-    status: "success",
+    action: validationStatus === "needs_review"
+      ? `Document flagged for review: ${documentName || "Document"}`
+      : `Document received: ${documentName || "Document"}`,
+    details: validationStatus === "needs_review"
+      ? `${onboarding.employee_name} · ${validationNotes}`
+      : `Uploaded by ${onboarding.employee_name} · ${received.length}/${required.length} documents complete`,
+    status: validationStatus === "needs_review" ? "warning" : "success",
   });
 
   // If all complete — create approval + notify manager
@@ -158,5 +192,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     }
   }
 
-  return NextResponse.json({ success: true, fileUrl: publicUrl, progress, missingDocuments, allComplete });
+  return NextResponse.json({
+    success: true,
+    fileUrl: publicUrl,
+    progress,
+    missingDocuments,
+    allComplete,
+    validationStatus,
+    validationNotes,
+  });
 }

@@ -14,7 +14,7 @@ type Priority = "urgent" | "action" | "review" | "info";
 
 interface WorkItem {
   id: string;
-  source: "approval" | "email_draft" | "social_post" | "missing_docs" | "risk" | "compliance" | "workflow_failure";
+  source: "approval" | "email_draft" | "social_post" | "missing_docs" | "risk" | "compliance" | "workflow_failure" | "ticket_review" | "ticket_expiring";
   agentType: string;
   title: string;
   subtitle: string;
@@ -176,6 +176,24 @@ export default function InboxPage() {
       body: JSON.stringify({ action: "send_doc_reminder", onboardingId: rowId(item) }),
     }), "Reminder email sent ✓");
 
+  const approveDocument = (item: WorkItem) =>
+    act(item, () => fetch("/api/portal/inbox", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve_document", documentId: rowId(item) }),
+    }), "Approved ✓");
+
+  const requestReupload = (item: WorkItem) =>
+    act(item, () => fetch("/api/portal/inbox", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "request_reupload", documentId: rowId(item) }),
+    }), "Re-upload requested ✓");
+
+  const renewTicket = (item: WorkItem, newDate: string) =>
+    act(item, () => fetch("/api/portal/inbox", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "renew_document", documentId: rowId(item), expiryDate: newDate }),
+    }), "Renewed ✓");
+
   const renewCompliance = (item: WorkItem, newDate: string) =>
     act(item, () => fetch("/api/portal/compliance/items", {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -298,7 +316,7 @@ export default function InboxPage() {
             item={selected}
             acting={acting}
             onBack={() => setMobileDetail(false)}
-            actions={{ approve, reject, markEmailSent, deleteEmailDraft, approvePost, rejectPost, sendDocReminder, renewCompliance }}
+            actions={{ approve, reject, markEmailSent, deleteEmailDraft, approvePost, rejectPost, sendDocReminder, renewCompliance, approveDocument, requestReupload, renewTicket }}
           />
         ) : (
           <EmptyDetail activity={activity} itemCount={items.length} />
@@ -377,6 +395,9 @@ interface Actions {
   rejectPost: (i: WorkItem) => void;
   sendDocReminder: (i: WorkItem) => void;
   renewCompliance: (i: WorkItem, d: string) => void;
+  approveDocument: (i: WorkItem) => void;
+  requestReupload: (i: WorkItem) => void;
+  renewTicket: (i: WorkItem, d: string) => void;
 }
 
 function DetailPane({ item, acting, onBack, actions }: { item: WorkItem; acting: boolean; onBack: () => void; actions: Actions }) {
@@ -565,6 +586,75 @@ function DetailPane({ item, acting, onBack, actions }: { item: WorkItem; acting:
         <Link href="/portal/compliance" className={btnGhost}>
           <ExternalLink size={13} /> Open compliance register
         </Link>
+      );
+      break;
+    }
+
+    case "ticket_review":
+      body = (
+        <>
+          <MetaRow icon={FileWarning} label="Worker" value={String(p.employeeName || "—")} />
+          <MetaRow icon={Clock} label="Uploaded" value={timeAgo(String(p.received_at || p.created_at)) + " ago"} />
+          <div className="glass rounded-xl border border-amber-500/15 p-4 mt-4">
+            <p className="text-[13px] text-amber-400 font-medium mb-1">AI Onboarding flagged this document</p>
+            <p className="text-[12px] text-text-muted leading-relaxed">
+              {String(p.validation_notes || "This needs a quick manual check before it's approved.")}
+            </p>
+          </div>
+        </>
+      );
+      footer = (
+        <>
+          {p.file_url ? (
+            <a href={String(p.file_url)} target="_blank" rel="noreferrer" className={btnGhost}>
+              <ExternalLink size={13} /> View document
+            </a>
+          ) : null}
+          <button disabled={acting} onClick={() => actions.approveDocument(item)} className={btnGreen}>
+            <CheckCircle2 size={14} /> Approve anyway
+          </button>
+          <button disabled={acting} onClick={() => actions.requestReupload(item)} className={btnRed}>
+            <Send size={13} /> Request re-upload
+          </button>
+        </>
+      );
+      break;
+
+    case "ticket_expiring": {
+      const daysLeft = Number(p.daysLeft);
+      body = (
+        <>
+          <MetaRow icon={FileWarning} label="Worker" value={String(p.employeeName || "—")} />
+          <MetaRow icon={CalendarCheck} label="Expiry" value={p.expiry_date ? new Date(String(p.expiry_date)).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" }) : "—"} />
+          <div className={`glass rounded-xl border p-4 mt-4 ${daysLeft < 0 || daysLeft <= 7 ? "border-red-500/15" : "border-amber-500/15"}`}>
+            <p className={`text-[13px] font-medium mb-2 ${daysLeft < 0 || daysLeft <= 7 ? "text-red-400" : "text-amber-400"}`}>
+              {daysLeft < 0 ? `Expired ${Math.abs(daysLeft)} day${Math.abs(daysLeft) !== 1 ? "s" : ""} ago` : `${daysLeft} day${daysLeft !== 1 ? "s" : ""} remaining`}
+            </p>
+            <p className="text-[12px] text-text-muted leading-relaxed mb-3">
+              This worker isn&apos;t site-ready without a valid ticket. Request a renewal, or mark it renewed once you have the new copy.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={renewDate}
+                onChange={(e) => setRenewDate(e.target.value)}
+                className="bg-white/[0.04] border border-white/[0.1] rounded-lg px-3 py-1.5 text-[13px] text-text-primary focus:border-accent-blue/50 focus:outline-none [color-scheme:dark]"
+              />
+              <button
+                disabled={acting || !renewDate}
+                onClick={() => actions.renewTicket(item, renewDate)}
+                className={btnGreen}
+              >
+                <CheckCircle2 size={14} /> Mark renewed
+              </button>
+            </div>
+          </div>
+        </>
+      );
+      footer = (
+        <button disabled={acting} onClick={() => actions.requestReupload(item)} className={btnPrimary}>
+          <Send size={14} /> Request renewal from worker
+        </button>
       );
       break;
     }

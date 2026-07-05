@@ -24,6 +24,7 @@ const PAGE_LABELS: [string, string][] = [
   ["/portal/support", "Support"],
   ["/portal/settings", "Settings"],
   ["/portal/onboarding", "Onboarding"],
+  ["/portal/site-readiness", "Site Readiness"],
   ["/portal/forms/new-employee", "New Employee"],
   ["/portal/approvals", "Approvals"],
   ["/portal/admin-assist/tasks", "Tasks"],

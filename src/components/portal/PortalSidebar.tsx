@@ -9,6 +9,7 @@ import {
   BarChart2, Activity, FilePlus, Settings, X, MessageSquare,
   BookOpen, Mail, GitBranch, LifeBuoy, ChevronDown, ChevronRight, FolderOpen,
   Sparkles, Calendar, Share2, ClipboardList, ListTodo, Inbox, FileText, LayoutGrid, Shield,
+  ShieldCheck,
 } from "lucide-react";
 import AgentAvatar from "./AgentAvatar";
 
@@ -27,11 +28,12 @@ const mainNavItems = [
 
 const onboardingNavItems = [
   { href: "/portal/onboarding", label: "Onboarding", icon: UserCheck },
+  { href: "/portal/site-readiness", label: "Site Readiness", icon: ShieldCheck },
   { href: "/portal/forms/new-employee", label: "New Employee", icon: FilePlus },
   { href: "/portal/approvals", label: "Approvals", icon: CheckSquare },
 ];
 
-const ONBOARDING_PATHS = ["/portal/onboarding", "/portal/forms/new-employee", "/portal/approvals"];
+const ONBOARDING_PATHS = ["/portal/onboarding", "/portal/site-readiness", "/portal/forms/new-employee", "/portal/approvals"];
 
 const socialNavItems = [
   { href: "/portal/social", label: "Post Studio", icon: Sparkles },

@@ -30,6 +30,7 @@ interface AgentConfig {
   managerApproval?: boolean;
   knowledgeBase?: boolean;
   requiredDocuments?: string[];
+  autoApproveThreshold?: number;
   // Social media fields
   brandVoice?: string;
   postFrequencyPerWeek?: number;
@@ -118,6 +119,7 @@ function OnboardingConfigPanel({
   const [managerApproval, setManagerApproval] = useState(cfg.managerApproval ?? true);
   const [knowledgeBase, setKnowledgeBase] = useState(cfg.knowledgeBase ?? true);
   const [requiredDocuments, setRequiredDocuments] = useState<string[]>(cfg.requiredDocuments ?? DEFAULT_DOCS);
+  const [autoApproveThreshold, setAutoApproveThreshold] = useState(cfg.autoApproveThreshold ?? 0.75);
   const [newDoc, setNewDoc] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -137,7 +139,7 @@ function OnboardingConfigPanel({
 
   async function handleSave() {
     setSaving(true);
-    const config: AgentConfig = { emailSenderName, emailSenderAddress, reminderFrequencyDays, escalationDays, managerApproval, knowledgeBase, requiredDocuments };
+    const config: AgentConfig = { emailSenderName, emailSenderAddress, reminderFrequencyDays, escalationDays, managerApproval, knowledgeBase, requiredDocuments, autoApproveThreshold };
     const res = await fetch(`/api/admin/clients/${clientId}/agents`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -160,6 +162,7 @@ function OnboardingConfigPanel({
       if (c.managerApproval !== undefined) setManagerApproval(c.managerApproval);
       if (c.knowledgeBase !== undefined) setKnowledgeBase(c.knowledgeBase);
       if (c.requiredDocuments) setRequiredDocuments(c.requiredDocuments);
+      if (c.autoApproveThreshold !== undefined) setAutoApproveThreshold(c.autoApproveThreshold);
     }
     setCloning(false);
     setShowClone(false);
@@ -284,6 +287,27 @@ function OnboardingConfigPanel({
                 className="w-full px-3 py-2 text-sm bg-[#1c1c2e] border border-white/[0.10] rounded-lg text-white focus:outline-none focus:border-accent-blue/40" />
               <p className="text-text-muted/50 text-[10px] mt-1">Days before start date to flag as high risk</p>
             </div>
+          </div>
+        </div>
+
+        {/* Autonomy */}
+        <div>
+          <p className="text-text-muted text-xs font-semibold uppercase tracking-wider mb-3">Ticket Validation Autonomy</p>
+          <div>
+            <label className="text-text-muted text-xs mb-1 block">Auto-approve confidence threshold</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range" min={0.5} max={0.95} step={0.05}
+                value={autoApproveThreshold}
+                onChange={(e) => setAutoApproveThreshold(Number(e.target.value))}
+                className="flex-1"
+              />
+              <span className="text-text-primary text-sm font-semibold w-12 text-right">{Math.round(autoApproveThreshold * 100)}%</span>
+            </div>
+            <p className="text-text-muted/50 text-[10px] mt-1">
+              Uploaded tickets are validated by AI (type, name match, expiry, legibility). Above this confidence,
+              they&apos;re approved automatically — below it, they&apos;re sent to the client&apos;s Work Inbox for a quick manual check.
+            </p>
           </div>
         </div>
 

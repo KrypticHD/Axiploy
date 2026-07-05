@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   LayoutDashboard, Bot, UserCheck, BarChart2, Activity, Settings,
   BookOpen, Mail, GitBranch, LifeBuoy, Inbox, Shield, Sparkles,
-  Search, MessageSquare, FilePlus, Calendar, ListTodo, CheckSquare,
+  Search, MessageSquare, FilePlus, Calendar, ListTodo, CheckSquare, ShieldCheck,
 } from "lucide-react";
 
 interface Command {
@@ -28,6 +28,7 @@ export default function CommandPalette({ onAsk }: { onAsk: (query?: string) => v
     { label: "Dashboard", href: "/portal/dashboard", icon: LayoutDashboard, keywords: "today overview" },
     { label: "AI Employees", href: "/portal/workforce", icon: Bot, keywords: "agents workforce" },
     { label: "Onboarding", href: "/portal/onboarding", icon: UserCheck },
+    { label: "Site Readiness", href: "/portal/site-readiness", icon: ShieldCheck, keywords: "tickets roster mining site ready" },
     { label: "New Employee", href: "/portal/forms/new-employee", icon: FilePlus, keywords: "add hire" },
     { label: "Approvals", href: "/portal/approvals", icon: CheckSquare },
     { label: "Daily Briefing", href: "/portal/admin-assist", icon: ListTodo, keywords: "admin assist" },
