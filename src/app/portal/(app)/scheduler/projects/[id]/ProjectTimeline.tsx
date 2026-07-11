@@ -74,6 +74,7 @@ export default function ProjectTimeline({
   const [predText, setPredText] = useState<Record<string, string>>({});
   const [predError, setPredError] = useState<Record<string, string>>({});
   const [windowDays, setWindowDays] = useState(28);
+  const [depMessage, setDepMessage] = useState<string | null>(null);
   const ganttRef = useRef<HTMLDivElement>(null);
 
   // Size the Gantt to fill whatever horizontal space is available
@@ -96,6 +97,12 @@ export default function ProjectTimeline({
     orderedTasks.forEach((t, i) => m.set(t.id, i + 1));
     return m;
   }, [orderedTasks]);
+
+  useEffect(() => {
+    if (!depMessage) return;
+    const t = setTimeout(() => setDepMessage(null), 6000);
+    return () => clearTimeout(t);
+  }, [depMessage]);
 
   function shiftWindow(delta: number) {
     setViewStart((prev) => new Date(prev.getTime() + delta * DAY_MS));
@@ -183,6 +190,7 @@ export default function ProjectTimeline({
 
     // Add newly-typed dependencies
     let firstError = "";
+    let lastMessage = "";
     for (const d of desired) {
       const exists = current.find((c) => c.predecessor_task_id === d.predecessorId && c.link_type === d.linkType);
       if (exists) continue;
@@ -196,12 +204,12 @@ export default function ProjectTimeline({
           lag_days: d.lag,
         }),
       });
-      if (!res.ok && !firstError) {
-        const data = await res.json();
-        firstError = data.error || "Failed to add dependency";
-      }
+      const data = await res.json().catch(() => null);
+      if (!res.ok && !firstError) firstError = data?.error || "Failed to add dependency";
+      else if (data?.message) lastMessage = data.message;
     }
 
+    if (lastMessage) setDepMessage(lastMessage);
     setPredError((p) => ({ ...p, [task.id]: firstError }));
     setPredText((p) => { const next = { ...p }; delete next[task.id]; return next; });
     onChange();
@@ -211,6 +219,12 @@ export default function ProjectTimeline({
 
   return (
     <div className="space-y-3">
+      {depMessage && (
+        <div className="glass rounded-lg border border-accent-blue/25 bg-accent-blue/[0.06] px-3.5 py-2 text-[12px] text-text-primary flex items-center justify-between gap-3">
+          <span>{depMessage}</span>
+          <button onClick={() => setDepMessage(null)} className="text-text-muted hover:text-text-primary shrink-0"><X size={12} /></button>
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <button onClick={() => shiftWindow(-7)} className="w-8 h-8 rounded-lg glass border border-white/[0.08] flex items-center justify-center text-text-muted hover:text-text-primary transition-colors">
           <ChevronLeft size={14} />

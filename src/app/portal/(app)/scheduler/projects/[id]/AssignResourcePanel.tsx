@@ -26,6 +26,7 @@ export default function AssignResourcePanel({ task, onChange }: { task: ProjectT
   const [overrideNeeded, setOverrideNeeded] = useState<{ blockers: { requirementName: string; reason: string }[] } | null>(null);
   const [overrideReason, setOverrideReason] = useState("");
   const [blockError, setBlockError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
     fetch("/api/portal/staff").then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.staff) setStaffOptions(d.staff); });
@@ -77,6 +78,12 @@ export default function AssignResourcePanel({ task, onChange }: { task: ProjectT
       return;
     }
 
+    setSuccessMsg(
+      withOverrideReason
+        ? `Assignment created with readiness override. Reason: ${withOverrideReason}`
+        : `${resourceName} assigned to this task.`
+    );
+
     if (data.warnings?.length) {
       setWarnings(data.warnings);
       // Still saved (warn-but-allow) — refresh parent and close after a beat so the warning is visible
@@ -87,6 +94,7 @@ export default function AssignResourcePanel({ task, onChange }: { task: ProjectT
       resetForm();
       onChange();
     }
+    setTimeout(() => setSuccessMsg(""), 6000);
   }
 
   async function removeAssignment(id: string) {
@@ -119,6 +127,12 @@ export default function AssignResourcePanel({ task, onChange }: { task: ProjectT
               </div>
             );
           })}
+        </div>
+      )}
+
+      {successMsg && (
+        <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] p-2.5">
+          <p className="text-[11px] text-emerald-400">{successMsg}</p>
         </div>
       )}
 

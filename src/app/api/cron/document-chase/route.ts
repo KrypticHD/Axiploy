@@ -67,13 +67,19 @@ export async function GET(req: NextRequest) {
         client_id: record.client_id,
         digital_employee: "AI Onboarding Assistant",
         action: `Document reminder sent: ${record.employee_name}`,
-        details: `${record.missing_documents} documents still missing`,
+        details: `${record.missing_documents} documents still missing · to ${record.email}`,
         status: "success",
       });
 
       chased++;
-    } catch {
-      // Continue with others
+    } catch (err) {
+      await supabase.from("activity_log").insert({
+        client_id: record.client_id,
+        digital_employee: "AI Onboarding Assistant",
+        action: `Reminder failed: ${record.employee_name}`,
+        details: `Delivery to ${record.email} failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+        status: "error",
+      });
     }
   }
 

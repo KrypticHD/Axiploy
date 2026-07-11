@@ -85,27 +85,37 @@ export async function GET(req: NextRequest) {
       </p>
     `);
 
-    await sendEmail({
-      to: adminUser.email,
-      subject: `${daysLeft <= 1 ? "⚠️ URGENT: " : daysLeft <= 7 ? "⚠️ " : ""}${item.title} expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`,
-      html,
-    });
+    try {
+      await sendEmail({
+        to: adminUser.email,
+        subject: `${daysLeft <= 1 ? "⚠️ URGENT: " : daysLeft <= 7 ? "⚠️ " : ""}${item.title} expires in ${daysLeft} day${daysLeft !== 1 ? "s" : ""}`,
+        html,
+      });
 
-    // Record that we sent this reminder
-    await supabase.from("compliance_reminders_sent").insert({
-      compliance_item_id: item.id,
-      days_before: matchedThreshold,
-    });
+      // Record that we sent this reminder
+      await supabase.from("compliance_reminders_sent").insert({
+        compliance_item_id: item.id,
+        days_before: matchedThreshold,
+      });
 
-    await supabase.from("activity_log").insert({
-      client_id: item.client_id,
-      digital_employee: "AI Compliance Assistant",
-      action: `Compliance reminder sent: ${item.title}`,
-      details: `${daysLeft} day${daysLeft !== 1 ? "s" : ""} until expiry · ${matchedThreshold}-day notice`,
-      status: daysLeft <= 7 ? "warning" : "success",
-    });
+      await supabase.from("activity_log").insert({
+        client_id: item.client_id,
+        digital_employee: "AI Compliance Assistant",
+        action: `Compliance reminder sent: ${item.title}`,
+        details: `${daysLeft} day${daysLeft !== 1 ? "s" : ""} until expiry · ${matchedThreshold}-day notice · to ${adminUser.email}`,
+        status: daysLeft <= 7 ? "warning" : "success",
+      });
 
-    sent++;
+      sent++;
+    } catch (err) {
+      await supabase.from("activity_log").insert({
+        client_id: item.client_id,
+        digital_employee: "AI Compliance Assistant",
+        action: `Reminder failed: ${item.title}`,
+        details: `Delivery to ${adminUser.email} failed: ${err instanceof Error ? err.message : "Unknown error"}`,
+        status: "error",
+      });
+    }
   }
 
   return NextResponse.json({ sent });

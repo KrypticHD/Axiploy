@@ -58,10 +58,14 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Snap the successor (and anything downstream of it) into a valid position immediately
+  // Enforce the constraint immediately — only shifts tasks that actually violate it
   const shifted = await cascadeFromTask(clientId, predecessor_task_id);
 
-  return NextResponse.json({ dependency: data, shifted });
+  const message = shifted.length === 0
+    ? "Dependency added. No dates changed because the successor already satisfies the constraint."
+    : `Dependency added. ${shifted.length} task${shifted.length === 1 ? "" : "s"} shifted to satisfy it: ${shifted.map((s) => s.name).join(", ")}.`;
+
+  return NextResponse.json({ dependency: data, shifted, message });
 }
 
 export async function DELETE(req: NextRequest) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { getStaffReadinessForOne } from "@/lib/staff-readiness";
 import { calculateWorkerReadiness } from "@/lib/worker-readiness";
+import { getWorkerTimeline, groupTimelineByRecency } from "@/lib/worker-timeline";
 
 function getClientId(req: NextRequest): string | null {
   const raw = req.cookies.get("axiploy_session")?.value;
@@ -34,6 +35,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   if (!staffRes.data) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const timelineEvents = await getWorkerTimeline(clientId, staffRes.data.employee_name);
+  const timeline = groupTimelineByRecency(timelineEvents);
+
   return NextResponse.json({
     staff: staffRes.data,
     readiness: ticketReadiness,
@@ -42,5 +46,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     canonicalReadiness,
     workerRequirements: workerRequirementsRes.data || [],
     sites: sitesRes.data || [],
+    timeline,
   });
 }

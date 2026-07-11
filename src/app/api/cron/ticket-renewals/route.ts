@@ -75,7 +75,16 @@ export async function GET(req: NextRequest) {
       html,
     });
 
-    if (!result.ok) continue;
+    if (!result.ok) {
+      await supabase.from("activity_log").insert({
+        client_id: doc.client_id,
+        digital_employee: "AI Onboarding Assistant",
+        action: `Reminder failed: Ticket renewal — ${doc.name}`,
+        details: `Delivery to ${ob.email} failed for ${ob.employee_name}`,
+        status: "error",
+      });
+      continue;
+    }
 
     await supabase.from("document_renewal_reminders_sent").insert({
       document_id: doc.id,

@@ -7,7 +7,8 @@ import StatusPill from "@/components/portal/StatusPill";
 import AgentAvatar from "@/components/portal/AgentAvatar";
 import {
   ArrowLeft, ShieldCheck, ClipboardList, ShieldAlert, User, CheckCircle2,
-  XCircle, Send, AlertTriangle, MapPin, Clock,
+  XCircle, Send, AlertTriangle, MapPin, Clock, History, FileText, Bell,
+  CalendarClock, UserPlus, Wrench,
 } from "lucide-react";
 
 interface TicketCell {
@@ -88,6 +89,29 @@ interface WorkerRequirement {
 
 interface Site { id: string; name: string; }
 
+type TimelineCategory = "worker" | "requirement" | "document" | "reminder" | "approval" | "scheduling" | "other";
+
+interface TimelineEvent {
+  id: string;
+  timestamp: string;
+  category: TimelineCategory;
+  label: string;
+  detail: string;
+  actor: string;
+  status: "success" | "warning" | "error" | "info";
+}
+
+interface TimelineGroup { label: string; events: TimelineEvent[]; }
+
+const TIMELINE_ICON: Record<TimelineCategory, React.ElementType> = {
+  worker: UserPlus, requirement: ClipboardList, document: FileText,
+  reminder: Bell, approval: CheckCircle2, scheduling: CalendarClock, other: Wrench,
+};
+
+const TIMELINE_DOT: Record<TimelineEvent["status"], string> = {
+  success: "bg-emerald-400", warning: "bg-amber-400", error: "bg-red-400", info: "bg-accent-cyan",
+};
+
 const TICKET_DOT: Record<string, string> = {
   ready: "bg-emerald-400", expiring: "bg-amber-400", expired: "bg-red-400",
   needs_review: "bg-accent-cyan", missing: "bg-white/20",
@@ -130,9 +154,11 @@ export default function StaffDetailPage() {
   const [canonical, setCanonical] = useState<CanonicalReadiness | null>(null);
   const [workerRequirements, setWorkerRequirements] = useState<WorkerRequirement[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
+  const [timeline, setTimeline] = useState<TimelineGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
 
   function load() {
     fetch(`/api/portal/staff/${id}`)
@@ -146,9 +172,16 @@ export default function StaffDetailPage() {
         setCanonical(d.canonicalReadiness || null);
         setWorkerRequirements(d.workerRequirements || []);
         setSites(d.sites || []);
+        setTimeline(d.timeline || []);
       })
       .finally(() => setLoading(false));
   }
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   useEffect(() => { load(); }, [id]);
 
@@ -161,10 +194,12 @@ export default function StaffDetailPage() {
   }
 
   async function requirementAction(reqId: string, action: string, extra?: Record<string, string>) {
-    await fetch("/api/portal/worker-requirements", {
+    const res = await fetch("/api/portal/worker-requirements", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: reqId, action, ...extra }),
     });
+    const data = await res.json().catch(() => null);
+    setToast(data?.message || (res.ok ? "Updated." : "Something went wrong — please try again."));
     setRejectingId(null);
     setRejectReason("");
     load();
@@ -185,6 +220,13 @@ export default function StaffDetailPage() {
       <Link href="/portal/staff" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary text-[13px] transition-colors">
         <ArrowLeft size={14} /> Back to Staff Directory
       </Link>
+
+      {toast && (
+        <div className="glass rounded-xl border border-accent-blue/25 bg-accent-blue/[0.06] px-4 py-3 text-[12.5px] text-text-primary flex items-center justify-between gap-3">
+          <span>{toast}</span>
+          <button onClick={() => setToast(null)} className="text-text-muted hover:text-text-primary shrink-0"><XCircle size={13} /></button>
+        </div>
+      )}
 
       <div className="glass rounded-xl border border-white/[0.06] p-5 flex items-center gap-4">
         <AgentAvatar type="onboarding" size={44} />
@@ -338,6 +380,44 @@ export default function StaffDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Worker timeline — chronological history sourced from the shared activity log */}
+      <div>
+        <h2 className="font-heading text-[15px] font-semibold text-text-primary mb-2 flex items-center gap-2">
+          <History size={15} className="text-accent-blue" /> Timeline
+        </h2>
+        {timeline.length === 0 ? (
+          <div className="glass rounded-xl border border-white/[0.06] p-4 text-[12px] text-text-muted">
+            No activity has been recorded for this worker yet.
+          </div>
+        ) : (
+          <div className="glass rounded-xl border border-white/[0.06] divide-y divide-white/[0.05]">
+            {timeline.map((group) => (
+              <div key={group.label} className="px-4 py-3">
+                <p className="text-[10.5px] font-semibold uppercase tracking-wide text-text-muted/60 mb-2">{group.label}</p>
+                <div className="space-y-3">
+                  {group.events.map((e) => {
+                    const Icon = TIMELINE_ICON[e.category];
+                    return (
+                      <div key={e.id} className="flex items-start gap-2.5">
+                        <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${TIMELINE_DOT[e.status]}`} />
+                        <Icon size={13} className="text-text-muted/50 mt-0.5 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[12.5px] text-text-primary">{e.label}</p>
+                          {e.detail && <p className="text-[11.5px] text-text-muted mt-0.5">{e.detail}</p>}
+                          <p className="text-[10.5px] text-text-muted/50 mt-0.5">
+                            {e.actor} · {new Date(e.timestamp).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Site readiness ticket matrix (kept — still the live document/expiry view) */}
       <div>

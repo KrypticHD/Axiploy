@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { calculateWorkerReadiness } from "@/lib/worker-readiness";
 
 function getSession(req: NextRequest): { clientId: string; name?: string } | null {
   const raw = req.cookies.get("axiploy_session")?.value;
@@ -40,11 +41,13 @@ export async function POST(req: NextRequest) {
   const supabase = supabaseAdmin();
   const { data: wr } = await supabase
     .from("worker_requirements")
-    .select("*, requirement_templates(name), onboarding(employee_name)")
+    .select("*, requirement_templates(name), onboarding(id, employee_name)")
     .eq("id", id)
     .eq("client_id", session.clientId)
     .single();
   if (!wr) return NextResponse.json({ error: "Requirement not found" }, { status: 404 });
+
+  const onboardingId = (wr.onboarding as unknown as { id?: string } | null)?.id || wr.onboarding_id;
 
   const requirementName = (wr.requirement_templates as unknown as { name?: string } | null)?.name || "Requirement";
   const workerName = (wr.onboarding as unknown as { employee_name?: string } | null)?.employee_name || "Worker";
@@ -114,5 +117,33 @@ export async function POST(req: NextRequest) {
     status: logStatus,
   });
 
-  return NextResponse.json({ success: true });
+  const message = await buildResultMessage(session.clientId, onboardingId, workerName, requirementName, action);
+
+  return NextResponse.json({ success: true, message });
+}
+
+/** Contextual confirmation text, e.g. "Working at Heights approved. Sam Lee has 2 remaining requirements." */
+async function buildResultMessage(
+  clientId: string, onboardingId: string, workerName: string, requirementName: string, action: string
+): Promise<string> {
+  const readiness = await calculateWorkerReadiness(clientId, onboardingId);
+  const remaining = readiness.requirementCount - readiness.completedCount;
+
+  const verb: Record<string, string> = {
+    internal_approve: "approved",
+    internal_reject: "rejected — replacement evidence requested",
+    submit_external: "submitted to the client for approval",
+    external_approve: "approved by the client",
+    external_reject: "rejected by the client",
+    waive: "waived",
+    unwaive: "waiver removed",
+  };
+
+  if (readiness.isReady && remaining === 0) {
+    return `${requirementName} ${verb[action] || "updated"}. ${workerName} is now ready to mobilise.`;
+  }
+  if (readiness.status === "action_required" && readiness.blockers.some((b) => b.status === "action_required")) {
+    return `${requirementName} ${verb[action] || "updated"}. ${workerName} is now internally complete and ready to submit to the client.`;
+  }
+  return `${requirementName} ${verb[action] || "updated"}. ${workerName} has ${remaining} remaining requirement${remaining === 1 ? "" : "s"}.`;
 }

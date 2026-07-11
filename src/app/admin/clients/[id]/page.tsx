@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Building2, Calendar } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
 import AgentManager from "./AgentManager";
+import ModuleAccessManager from "./ModuleAccessManager";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -60,6 +61,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           <p className="text-text-primary text-2xl font-bold font-heading">{agents.length}</p>
         </div>
       </div>
+
+      <ModuleAccessManager clientId={id} />
 
       <AgentManager clientId={id} agents={agents} employeesManaged={employeesManaged} lastRun={lastRun} allClients={allClients} />
     </div>

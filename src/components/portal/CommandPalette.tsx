@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Bot, UserCheck, BarChart2, Activity, Settings,
   BookOpen, Mail, GitBranch, LifeBuoy, Inbox, Shield, Sparkles,
   Search, MessageSquare, FilePlus, Calendar, ListTodo, CheckSquare, ShieldCheck, ShieldAlert, Users,
-  CalendarDays, FolderKanban, Truck,
+  CalendarDays, FolderKanban, Truck, MapPin, ClipboardList, FileText,
 } from "lucide-react";
 
 interface Command {
@@ -17,11 +17,29 @@ interface Command {
   action?: () => void;
 }
 
+interface SearchResult {
+  id: string;
+  type: "worker" | "site" | "project" | "requirement" | "document";
+  title: string;
+  subtitle: string;
+  href: string;
+}
+
+const RESULT_ICON: Record<SearchResult["type"], React.ElementType> = {
+  worker: Users, site: MapPin, project: FolderKanban, requirement: ClipboardList, document: FileText,
+};
+
+const RESULT_LABEL: Record<SearchResult["type"], string> = {
+  worker: "Worker", site: "Site", project: "Project", requirement: "Requirement", document: "Document",
+};
+
 export default function CommandPalette({ onAsk }: { onAsk: (query?: string) => void }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState(0);
+  const [dataResults, setDataResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const commands: Command[] = [
@@ -59,13 +77,37 @@ export default function CommandPalette({ onAsk }: { onAsk: (query?: string) => v
     ? commands.filter((c) => c.label.toLowerCase().includes(q) || (c.keywords || "").includes(q))
     : commands.slice(0, 8);
 
+  // Debounced live search across workers/sites/projects/requirements/documents
+  useEffect(() => {
+    const term = query.trim();
+    if (term.length < 2) {
+      const t = setTimeout(() => { setDataResults([]); setSearching(false); }, 0);
+      return () => clearTimeout(t);
+    }
+    const startTimer = setTimeout(() => setSearching(true), 0);
+    const t = setTimeout(() => {
+      fetch(`/api/portal/search?q=${encodeURIComponent(term)}`)
+        .then((r) => (r.ok ? r.json() : { results: [] }))
+        .then((d) => setDataResults(d.results || []))
+        .finally(() => setSearching(false));
+    }, 250);
+    return () => { clearTimeout(startTimer); clearTimeout(t); };
+  }, [query]);
+
+  const resultRows: Command[] = dataResults.map((r) => ({
+    label: r.title,
+    href: r.href,
+    icon: RESULT_ICON[r.type],
+    keywords: `${RESULT_LABEL[r.type]} ${r.subtitle}`.toLowerCase(),
+  }));
+
   // Always offer "Ask Axiploy" — with the query when typed
   const askRow: Command = {
     label: q ? `Ask Axiploy: "${query.trim()}"` : "Ask Axiploy",
     icon: MessageSquare,
     action: () => onAsk(q ? query.trim() : undefined),
   };
-  const rows = [...filtered, askRow];
+  const rows = q ? [...resultRows, ...filtered, askRow] : [...filtered, askRow];
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -116,9 +158,15 @@ export default function CommandPalette({ onAsk }: { onAsk: (query?: string) => v
           <kbd className="text-[10px] text-text-muted/50 border border-white/[0.1] rounded px-1.5 py-0.5">esc</kbd>
         </div>
         <div className="max-h-72 overflow-y-auto py-1.5">
+          {q && searching && (
+            <p className="px-4 py-1.5 text-[11px] text-text-muted/50">Searching…</p>
+          )}
+          {q && !searching && resultRows.length === 0 && filtered.length === 0 && (
+            <p className="px-4 py-2 text-[12px] text-text-muted/70">No matches for &quot;{query.trim()}&quot;.</p>
+          )}
           {rows.map((cmd, i) => (
             <button
-              key={cmd.label}
+              key={`${cmd.label}-${i}`}
               onClick={() => run(cmd)}
               onMouseEnter={() => setIndex(i)}
               className={`w-full flex items-center gap-3 px-4 py-2 text-left text-[13px] transition-colors ${
@@ -126,7 +174,10 @@ export default function CommandPalette({ onAsk }: { onAsk: (query?: string) => v
               } ${cmd.action ? "border-t border-white/[0.05] mt-1 pt-2.5 text-accent-blue" : ""}`}
             >
               <cmd.icon size={14} className={cmd.action ? "text-accent-blue" : i === index ? "text-accent-blue" : "text-text-muted/60"} />
-              {cmd.label}
+              <span className="min-w-0 flex-1 truncate">{cmd.label}</span>
+              {cmd.keywords && i < resultRows.length && (
+                <span className="text-[10px] text-text-muted/40 shrink-0 capitalize">{cmd.keywords.split(" ")[0]}</span>
+              )}
             </button>
           ))}
         </div>

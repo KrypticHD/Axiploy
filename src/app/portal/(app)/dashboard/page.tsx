@@ -6,9 +6,18 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import {
   Bot, Clock, CheckSquare, AlertTriangle, BarChart2,
-  ArrowRight, Plus, Inbox,
+  ArrowRight, Plus, Inbox, Users, ShieldCheck, FileWarning,
+  Eye, Send, CalendarClock, XCircle,
 } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getDashboardReadiness } from "@/lib/readiness-dashboard";
+
+const PLAIN_LABEL: Record<string, string> = {
+  not_started: "Not started", awaiting_worker: "Missing", under_review: "Awaiting review",
+  action_required: "Action required", awaiting_internal_approval: "Awaiting review",
+  awaiting_external_approval: "Awaiting client approval", ready: "Ready",
+  expiring_soon: "Expiring soon", expired: "Expired", blocked: "Action required",
+};
 
 const deLinks: Record<string, string> = {
   onboarding: "/portal/onboarding",
@@ -46,18 +55,24 @@ export default async function DashboardPage() {
   let recentActivity: ActivityEntry[] = [];
   let digitalEmployees: DigitalEmployee[] = [];
   let tasksYesterday = 0;
+  let readinessData: Awaited<ReturnType<typeof getDashboardReadiness>> | null = null;
+
+  let failedReminders: { id: string; action: string; details: string; created_at: string }[] = [];
 
   if (clientId) {
+    readinessData = await getDashboardReadiness(clientId);
     const supabase = supabaseAdmin();
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    const [approvalsRes, onboardingRes, activityRes, deRes, recentActRes] = await Promise.all([
+    const [approvalsRes, onboardingRes, activityRes, deRes, recentActRes, failedRes] = await Promise.all([
       supabase.from("approvals").select("id").eq("client_id", clientId).eq("status", "pending"),
       supabase.from("onboarding").select("id, status, risk_level").eq("client_id", clientId),
       supabase.from("activity_log").select("*").eq("client_id", clientId).order("created_at", { ascending: false }).limit(6),
       supabase.from("digital_employees").select("*").eq("client_id", clientId),
       supabase.from("activity_log").select("digital_employee").eq("client_id", clientId).gte("created_at", dayAgo).limit(200),
+      supabase.from("activity_log").select("id, action, details, created_at").eq("client_id", clientId).eq("status", "error").ilike("action", "Reminder failed%").order("created_at", { ascending: false }).limit(8),
     ]);
+    failedReminders = failedRes.data || [];
 
     pendingApprovals = approvalsRes.data?.length ?? 0;
     highRiskItems = (onboardingRes.data || []).filter((r) => r.risk_level === "High" || r.risk_level === "Critical").length;
@@ -182,14 +197,112 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-        <MetricCard label="AI Employees" value={digitalEmployees.length} icon={Bot} accent="blue" />
-        <MetricCard label="Actions (24h)" value={tasksYesterday} icon={CheckSquare} accent="cyan" />
-        <MetricCard label="Hours Saved" value={`${hoursSaved}h`} icon={Clock} accent="green" sub="This month" />
-        <MetricCard label="Decisions Waiting" value={decisionsWaiting} icon={Inbox} accent="amber" />
-        <MetricCard label="High Risk" value={highRiskItems} icon={AlertTriangle} accent="red" />
-        <MetricCard label="Reports" value={digitalEmployees.length > 0 ? "Ready" : "—"} icon={BarChart2} accent="cyan" />
-      </div>
+      {readinessData && (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
+            <MetricCard label="Total Workers" value={readinessData.counts.total} icon={Users} accent="blue" />
+            <MetricCard label="Ready" value={readinessData.counts.ready} icon={ShieldCheck} accent="green" />
+            <MetricCard label="Awaiting Documents" value={readinessData.counts.awaitingDocuments} icon={FileWarning} accent="amber" />
+            <MetricCard label="Under Review" value={readinessData.counts.underReview} icon={Eye} accent="cyan" />
+            <MetricCard label="Awaiting Client Approval" value={readinessData.counts.awaitingClientApproval} icon={Send} accent="amber" />
+            <MetricCard label="Expiring Soon" value={readinessData.counts.expiringSoon} icon={CalendarClock} accent="amber" />
+            <MetricCard label="Expired" value={readinessData.counts.expired} icon={XCircle} accent="red" />
+            <MetricCard label="Scheduled but Blocked" value={readinessData.counts.scheduledButBlocked} icon={AlertTriangle} accent="red" />
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-5">
+            <div>
+              <h2 className="font-heading text-[15px] font-semibold text-text-primary mb-2">Action required</h2>
+              {readinessData.actionRequired.length === 0 ? (
+                <div className="glass rounded-xl p-5 text-center border border-white/[0.06]">
+                  <ShieldCheck size={18} className="text-emerald-400/60 mx-auto mb-1.5" />
+                  <p className="text-text-muted text-[12px]">Nothing needs attention right now.</p>
+                </div>
+              ) : (
+                <div className="glass rounded-xl border border-white/[0.06] divide-y divide-white/[0.05]">
+                  {readinessData.actionRequired.map((a, i) => (
+                    <Link key={i} href={`/portal/staff/${a.onboardingId}`} className="flex items-center justify-between gap-2 px-3.5 py-2.5 hover:bg-white/[0.02] transition-colors">
+                      <div className="min-w-0">
+                        <p className="text-[12.5px] text-text-primary truncate">{a.employeeName} · {a.requirementName}</p>
+                        <p className="text-[11px] text-text-muted truncate">{a.reason}</p>
+                      </div>
+                      <span className="text-[10.5px] text-red-400 shrink-0">{PLAIN_LABEL[a.status] || a.status}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h2 className="font-heading text-[15px] font-semibold text-text-primary mb-2">Upcoming mobilisation</h2>
+              {readinessData.upcomingMobilisation.length === 0 ? (
+                <div className="glass rounded-xl p-5 text-center border border-white/[0.06]">
+                  <CalendarClock size={18} className="text-text-muted/30 mx-auto mb-1.5" />
+                  <p className="text-text-muted text-[12px]">No workers scheduled yet.</p>
+                </div>
+              ) : (
+                <div className="glass rounded-xl border border-white/[0.06] divide-y divide-white/[0.05]">
+                  {readinessData.upcomingMobilisation.map((m, i) => (
+                    <Link key={i} href={`/portal/staff/${m.onboardingId}`} className="flex items-center justify-between gap-2 px-3.5 py-2.5 hover:bg-white/[0.02] transition-colors">
+                      <div className="min-w-0">
+                        <p className="text-[12.5px] text-text-primary truncate">{m.employeeName} · {m.role}</p>
+                        <p className="text-[11px] text-text-muted truncate">
+                          {m.siteName || "No site"} · {new Date(m.startDate).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                          {m.mainBlocker ? ` · ${m.mainBlocker}` : ""}
+                        </p>
+                      </div>
+                      <span className={`text-[10.5px] shrink-0 ${m.status === "ready" ? "text-emerald-400" : "text-amber-400"}`}>{PLAIN_LABEL[m.status] || m.status}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <h2 className="font-heading text-[15px] font-semibold text-text-primary mb-2">Upcoming expiries</h2>
+              {readinessData.upcomingExpiries.length === 0 ? (
+                <div className="glass rounded-xl p-5 text-center border border-white/[0.06]">
+                  <ShieldCheck size={18} className="text-emerald-400/60 mx-auto mb-1.5" />
+                  <p className="text-text-muted text-[12px]">Nothing expiring soon.</p>
+                </div>
+              ) : (
+                <div className="glass rounded-xl border border-white/[0.06] divide-y divide-white/[0.05]">
+                  {readinessData.upcomingExpiries.map((e, i) => (
+                    <Link key={i} href={`/portal/staff/${e.onboardingId}`} className="flex items-center justify-between gap-2 px-3.5 py-2.5 hover:bg-white/[0.02] transition-colors">
+                      <div className="min-w-0">
+                        <p className="text-[12.5px] text-text-primary truncate">{e.employeeName} · {e.requirementName}</p>
+                        <p className="text-[11px] text-text-muted truncate">{e.reason}</p>
+                      </div>
+                      {e.daysRemaining !== null && <span className="text-[10.5px] text-amber-400 shrink-0">{e.daysRemaining}d</span>}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {failedReminders.length > 0 && (
+            <div>
+              <h2 className="font-heading text-[15px] font-semibold text-text-primary mb-2 flex items-center gap-2">
+                <AlertTriangle size={14} className="text-red-400" /> Failed reminders
+              </h2>
+              <div className="glass rounded-xl border border-red-500/15 divide-y divide-white/[0.05]">
+                {failedReminders.map((r) => (
+                  <div key={r.id} className="flex items-center justify-between gap-2 px-3.5 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-[12.5px] text-text-primary truncate">{r.action.replace("Reminder failed: ", "")}</p>
+                      <p className="text-[11px] text-text-muted truncate">{r.details}</p>
+                    </div>
+                    <span className="text-[10.5px] text-text-muted/60 shrink-0">
+                      {new Date(r.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-3">
