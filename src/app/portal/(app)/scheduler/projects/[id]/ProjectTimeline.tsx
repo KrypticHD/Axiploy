@@ -1,15 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight, X, Plus } from "lucide-react";
-import GanttGrid, { STATUS_COLOR, DAY_MS, type GanttDependency } from "../../GanttGrid";
+import GanttGrid, { STATUS_COLOR, DAY_MS, DAY_WIDTH, type GanttDependency } from "../../GanttGrid";
 import AssignResourcePanel from "./AssignResourcePanel";
 import type { ProjectTask } from "./page";
 
-const WINDOW_DAYS = 21;
 const ROW_HEIGHT = 34;
 const HEADER_HEIGHT = 44;
+const TABLE_WIDTH = 460;
 const VALID_LINKS = ["FS", "SS", "FF", "SF"];
+
+function toISODate(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
 
 /** Parses MS Project-style shorthand: "2FS+3d, 4SS-1d, 1" (row number, optional link type, optional lag). */
 function parsePredecessorText(text: string): { rowNum: number; linkType: string; lag: number }[] {
@@ -69,6 +73,22 @@ export default function ProjectTimeline({
   const [newTaskName, setNewTaskName] = useState("");
   const [predText, setPredText] = useState<Record<string, string>>({});
   const [predError, setPredError] = useState<Record<string, string>>({});
+  const [windowDays, setWindowDays] = useState(28);
+  const ganttRef = useRef<HTMLDivElement>(null);
+
+  // Size the Gantt to fill whatever horizontal space is available
+  useEffect(() => {
+    const el = ganttRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = el.clientWidth;
+      if (w > 0) setWindowDays(Math.max(10, Math.floor(w / DAY_WIDTH)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const orderedTasks = useMemo(() => [...tasks].sort((a, b) => a.start_date.localeCompare(b.start_date)), [tasks]);
   const rowNumberOf = useMemo(() => {
@@ -102,12 +122,30 @@ export default function ProjectTimeline({
   async function addTask() {
     const name = newTaskName.trim();
     if (!name) return;
-    const today = new Date().toISOString().split("T")[0];
-    const tomorrow = new Date(Date.now() + DAY_MS).toISOString().split("T")[0];
+
+    // Default new tasks to the end of the current schedule (or today if empty),
+    // so they always land somewhere the user is already looking.
+    let start: string;
+    if (orderedTasks.length > 0) {
+      const latestEnd = orderedTasks.reduce((a, t) => (t.end_date > a ? t.end_date : a), orderedTasks[0].end_date);
+      start = toISODate(new Date(new Date(latestEnd).getTime() + DAY_MS));
+    } else {
+      start = toISODate(new Date());
+    }
+    const end = toISODate(new Date(new Date(start).getTime() + 2 * DAY_MS));
+
+    // Make sure the new bar is inside the visible window
+    const startDate = new Date(start);
+    if (startDate < viewStart || startDate > new Date(viewStart.getTime() + windowDays * DAY_MS)) {
+      const nv = new Date(startDate);
+      nv.setDate(nv.getDate() - 2);
+      setViewStart(nv);
+    }
+
     await fetch("/api/portal/scheduler/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ project_id: projectId, name, start_date: today, end_date: tomorrow }),
+      body: JSON.stringify({ project_id: projectId, name, start_date: start, end_date: end }),
     });
     setNewTaskName("");
     onChange();
@@ -192,9 +230,9 @@ export default function ProjectTimeline({
         </p>
       </div>
 
-      <div className="glass rounded-xl border border-white/[0.06] flex overflow-hidden">
+      <div className="glass rounded-xl border border-white/[0.06] flex overflow-hidden" style={{ minHeight: "calc(100vh - 320px)" }}>
         {/* Left: editable task grid */}
-        <div className="shrink-0 border-r border-white/[0.06]" style={{ width: 460 }}>
+        <div className="shrink-0 border-r border-white/[0.06]" style={{ width: TABLE_WIDTH }}>
           <div className="flex border-b border-white/[0.06] bg-surface" style={{ height: HEADER_HEIGHT }}>
             <div className="w-8 shrink-0 flex items-center justify-center text-[10px] text-text-muted/50">#</div>
             <div className="flex-1 min-w-0 px-2 flex items-center text-[11px] font-semibold text-text-muted uppercase tracking-wide">Name</div>
@@ -260,7 +298,7 @@ export default function ProjectTimeline({
         </div>
 
         {/* Right: synced Gantt bars */}
-        <div className="flex-1 min-w-0">
+        <div ref={ganttRef} className="flex-1 min-w-0">
           {tasks.length === 0 ? (
             <div className="flex items-center justify-center h-full p-8 text-center">
               <p className="text-text-muted text-[13px]">Add a task on the left to see it here.</p>
@@ -270,7 +308,7 @@ export default function ProjectTimeline({
               groups={group}
               dependencies={dependencies}
               viewStart={viewStart}
-              windowDays={WINDOW_DAYS}
+              windowDays={windowDays}
               onTaskClick={(t) => setActiveTask(orderedTasks.find((pt) => pt.id === t.id) || null)}
               onTaskDatesChange={handleTaskDatesChange}
               showGroupHeaders={false}

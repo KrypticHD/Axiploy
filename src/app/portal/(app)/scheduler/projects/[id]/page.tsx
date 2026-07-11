@@ -81,7 +81,7 @@ export default function ProjectDetailPage() {
   if (!project) return <div className="glass rounded-xl border border-white/[0.06] p-8 text-center"><p className="text-text-muted text-[13px]">Project not found.</p></div>;
 
   return (
-    <div className="space-y-5 max-w-4xl">
+    <div className="space-y-5">
       <Link href="/portal/scheduler/projects" className="inline-flex items-center gap-1.5 text-text-muted hover:text-text-primary text-[13px] transition-colors">
         <ArrowLeft size={14} /> Back to Projects
       </Link>

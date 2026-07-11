@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { wouldCreateCycle } from "@/lib/scheduler-dependencies";
+import { wouldCreateCycle, cascadeFromTask } from "@/lib/scheduler-dependencies";
 
 function getClientId(req: NextRequest): string | null {
   const raw = req.cookies.get("axiploy_session")?.value;
@@ -57,7 +57,11 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ dependency: data });
+
+  // Snap the successor (and anything downstream of it) into a valid position immediately
+  const shifted = await cascadeFromTask(clientId, predecessor_task_id);
+
+  return NextResponse.json({ dependency: data, shifted });
 }
 
 export async function DELETE(req: NextRequest) {
