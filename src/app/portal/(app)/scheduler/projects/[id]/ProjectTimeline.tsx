@@ -256,12 +256,14 @@ export default function ProjectTimeline({
                     className="flex-1 min-w-0 px-2 py-1 bg-transparent text-[12px] text-text-primary focus:outline-none focus:bg-white/[0.03] truncate"
                   />
                   <input
+                    key={`start:${task.id}:${task.start_date}`}
                     type="date"
                     defaultValue={task.start_date}
                     onBlur={(e) => e.target.value && e.target.value !== task.start_date && updateTaskField(task.id, "start_date", e.target.value)}
                     className="w-[92px] shrink-0 px-1 py-1 bg-transparent text-[11px] text-text-primary focus:outline-none focus:bg-white/[0.03] [color-scheme:dark]"
                   />
                   <input
+                    key={`end:${task.id}:${task.end_date}`}
                     type="date"
                     defaultValue={task.end_date}
                     onBlur={(e) => e.target.value && e.target.value !== task.end_date && updateTaskField(task.id, "end_date", e.target.value)}
