@@ -23,6 +23,9 @@ export default function AssignResourcePanel({ task, onChange }: { task: ProjectT
   const [endDate, setEndDate] = useState(task.end_date);
   const [saving, setSaving] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [overrideNeeded, setOverrideNeeded] = useState<{ blockers: { requirementName: string; reason: string }[] } | null>(null);
+  const [overrideReason, setOverrideReason] = useState("");
+  const [blockError, setBlockError] = useState("");
 
   useEffect(() => {
     fetch("/api/portal/staff").then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.staff) setStaffOptions(d.staff); });
@@ -33,9 +36,12 @@ export default function AssignResourcePanel({ task, onChange }: { task: ProjectT
     setStaffId(""); setEquipmentId(""); setSubcontractorName("");
     setStartDate(task.start_date); setEndDate(task.end_date);
     setWarnings([]);
+    setOverrideNeeded(null);
+    setOverrideReason("");
+    setBlockError("");
   }
 
-  async function handleAssign() {
+  async function handleAssign(withOverrideReason?: string) {
     let resourceName = "";
     if (resourceType === "staff") resourceName = staffOptions.find((s) => s.id === staffId)?.employee_name || "";
     if (resourceType === "equipment") resourceName = equipmentOptions.find((e) => e.id === equipmentId)?.name || "";
@@ -44,6 +50,7 @@ export default function AssignResourcePanel({ task, onChange }: { task: ProjectT
     if (!resourceName) return;
 
     setSaving(true);
+    setBlockError("");
     const res = await fetch("/api/portal/scheduler/assignments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -55,10 +62,20 @@ export default function AssignResourcePanel({ task, onChange }: { task: ProjectT
         resource_name: resourceName,
         start_date: startDate,
         end_date: endDate,
+        overrideReason: withOverrideReason,
       }),
     });
     const data = await res.json();
     setSaving(false);
+
+    if (res.status === 409 && data.requiresOverride) {
+      setOverrideNeeded({ blockers: data.blockers || [] });
+      return;
+    }
+    if (res.status === 409) {
+      setBlockError(data.error || "This assignment isn't allowed.");
+      return;
+    }
 
     if (data.warnings?.length) {
       setWarnings(data.warnings);
@@ -115,6 +132,38 @@ export default function AssignResourcePanel({ task, onChange }: { task: ProjectT
         </div>
       )}
 
+      {blockError && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/[0.06] p-2.5">
+          <p className="text-[11px] text-red-400 flex items-start gap-1.5">
+            <AlertTriangle size={11} className="mt-0.5 shrink-0" /> {blockError}
+          </p>
+        </div>
+      )}
+
+      {overrideNeeded && (
+        <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-3 space-y-2">
+          <p className="text-[12px] text-amber-400 font-medium">This worker isn&apos;t ready for this date:</p>
+          {overrideNeeded.blockers.map((b, i) => (
+            <p key={i} className="text-[11px] text-text-muted pl-2">• {b.requirementName}: {b.reason}</p>
+          ))}
+          <input
+            value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)}
+            placeholder="Reason for overriding (required)"
+            className="w-full bg-white/[0.04] border border-white/[0.1] rounded-lg px-2.5 py-1.5 text-[12px] text-text-primary focus:outline-none focus:border-amber-400/40"
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={() => overrideReason.trim() && handleAssign(overrideReason.trim())}
+              disabled={!overrideReason.trim() || saving}
+              className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-400 text-[12px] font-medium disabled:opacity-40"
+            >
+              Confirm override &amp; assign
+            </button>
+            <button onClick={() => setOverrideNeeded(null)} className="text-text-muted text-[11px]">Cancel</button>
+          </div>
+        </div>
+      )}
+
       {showAssign ? (
         <div className="glass rounded-lg border border-accent-blue/20 p-3 space-y-2.5">
           <div className="flex items-center gap-1.5">
@@ -154,7 +203,7 @@ export default function AssignResourcePanel({ task, onChange }: { task: ProjectT
           </div>
 
           <div className="flex gap-2">
-            <button onClick={handleAssign} disabled={saving} className="px-3 py-1.5 rounded-lg bg-accent-blue hover:bg-accent-blue-light text-white text-[12px] font-medium transition-colors disabled:opacity-50">
+            <button onClick={() => handleAssign()} disabled={saving} className="px-3 py-1.5 rounded-lg bg-accent-blue hover:bg-accent-blue-light text-white text-[12px] font-medium transition-colors disabled:opacity-50">
               {saving ? "Assigning…" : "Assign"}
             </button>
             <button onClick={() => { setShowAssign(false); resetForm(); }} className="px-3 py-1.5 rounded-lg glass border border-white/[0.08] text-text-muted text-[12px]">

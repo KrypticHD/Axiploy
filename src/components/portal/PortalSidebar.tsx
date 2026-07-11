@@ -13,14 +13,17 @@ import {
 } from "lucide-react";
 import AgentAvatar from "./AgentAvatar";
 
+// `module` is undefined for core items that are always shown. Items with a
+// module key are hidden when a tenant has a non-null `enabledModules` list
+// that doesn't include it (see resolveEnabledModules below).
 const mainNavItems = [
   { href: "/portal/inbox", label: "Inbox", icon: Inbox, badge: true },
   { href: "/portal/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/portal/workforce", label: "AI Employees", icon: Bot },
-  { href: "/portal/workflows", label: "Workflow Health", icon: GitBranch },
+  { href: "/portal/workforce", label: "AI Employees", icon: Bot, module: "ai_employees" },
+  { href: "/portal/workflows", label: "Workflow Health", icon: GitBranch, module: "workflow_health" },
   { href: "/portal/reports", label: "Reports", icon: BarChart2 },
   { href: "/portal/activity", label: "Activity", icon: Activity },
-  { href: "/portal/knowledge", label: "Knowledge Base", icon: BookOpen },
+  { href: "/portal/knowledge", label: "Knowledge Base", icon: BookOpen, module: "knowledge_base" },
   { href: "/portal/templates", label: "Email Templates", icon: Mail },
   { href: "/portal/support", label: "Support", icon: LifeBuoy },
   { href: "/portal/settings", label: "Settings", icon: Settings },
@@ -30,11 +33,12 @@ const onboardingNavItems = [
   { href: "/portal/staff", label: "Staff Directory", icon: Users },
   { href: "/portal/onboarding", label: "Onboarding", icon: UserCheck },
   { href: "/portal/site-readiness", label: "Site Readiness", icon: ShieldCheck },
+  { href: "/portal/requirements", label: "Requirement Templates", icon: ClipboardList },
   { href: "/portal/forms/new-employee", label: "New Employee", icon: FilePlus },
   { href: "/portal/approvals", label: "Approvals", icon: CheckSquare },
 ];
 
-const ONBOARDING_PATHS = ["/portal/staff", "/portal/onboarding", "/portal/site-readiness", "/portal/forms/new-employee", "/portal/approvals"];
+const ONBOARDING_PATHS = ["/portal/staff", "/portal/onboarding", "/portal/site-readiness", "/portal/requirements", "/portal/forms/new-employee", "/portal/approvals"];
 
 const socialNavItems = [
   { href: "/portal/social", label: "Post Studio", icon: Sparkles },
@@ -103,6 +107,13 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
   const [safetyOpen, setSafetyOpen] = useState(false);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [enabledModules, setEnabledModules] = useState<string[] | null>(null);
+
+  // null = show everything (default, backward compatible for existing tenants).
+  // A non-null array trims nav to a pilot's configured module set.
+  function isModuleEnabled(key: string): boolean {
+    return enabledModules === null || enabledModules.includes(key);
+  }
 
   useEffect(() => {
     if (ONBOARDING_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
@@ -140,14 +151,16 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
         setHasCompliance(!!d.compliance);
         setHasSafety(!!d.safety);
         setAgents(d.agents || []);
+        setEnabledModules(d.enabledModules ?? null);
       })
       .catch(() => {});
   }, [pathname]);
 
   function renderNavItem(
-    item: { href: string; label: string; icon: React.ElementType; badge?: boolean },
+    item: { href: string; label: string; icon: React.ElementType; badge?: boolean; module?: string },
     indented = false
   ) {
+    if (item.module && !isModuleEnabled(item.module)) return null;
     const active = pathname === item.href || (item.href !== "/portal/inbox" && pathname.startsWith(item.href + "/"));
     const badgeCount = item.badge ? inboxCount : 0;
 
@@ -226,29 +239,31 @@ export default function PortalSidebar({ open, onClose, onAskToggle }: PortalSide
       {/* Nav */}
       <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
         {/* Ask Axiploy — pinned */}
-        <button
-          onClick={() => { onClose(); onAskToggle(); }}
-          className="w-full flex items-center gap-2.5 px-2.5 py-[7px] mb-2 rounded-lg text-[13px] font-medium text-accent-blue border border-accent-blue/15 bg-accent-blue/[0.06] hover:bg-accent-blue/[0.12] transition-colors duration-150"
-        >
-          <MessageSquare size={14} />
-          <span className="flex-1 text-left">Ask Axiploy</span>
-          <Sparkles size={12} className="text-accent-cyan/70" />
-        </button>
+        {isModuleEnabled("ask_axiploy") && (
+          <button
+            onClick={() => { onClose(); onAskToggle(); }}
+            className="w-full flex items-center gap-2.5 px-2.5 py-[7px] mb-2 rounded-lg text-[13px] font-medium text-accent-blue border border-accent-blue/15 bg-accent-blue/[0.06] hover:bg-accent-blue/[0.12] transition-colors duration-150"
+          >
+            <MessageSquare size={14} />
+            <span className="flex-1 text-left">Ask Axiploy</span>
+            <Sparkles size={12} className="text-accent-cyan/70" />
+          </button>
+        )}
 
         <ul className="space-y-px">
           {mainNavItems.slice(0, 2).map((item) => renderNavItem(item))}
 
           <div className="my-2 border-t border-white/[0.05]" />
 
-          {/* Scheduler — shared platform feature, not agent-gated */}
-          {renderGroup("Scheduler", CalendarDays, schedulerOpen, setSchedulerOpen, schedulerActive, schedulerNavItems)}
+          {/* Scheduler — shared platform feature, not agent-gated (but still respects pilot module trimming) */}
+          {isModuleEnabled("scheduler") && renderGroup("Scheduler", CalendarDays, schedulerOpen, setSchedulerOpen, schedulerActive, schedulerNavItems)}
 
           <div className="my-2 border-t border-white/[0.05]" />
 
           {/* Agent workspaces */}
-          {hasAdmin && renderGroup("AI Admin", ClipboardList, adminOpen, setAdminOpen, adminActive, adminNavItems)}
+          {hasAdmin && isModuleEnabled("admin") && renderGroup("AI Admin", ClipboardList, adminOpen, setAdminOpen, adminActive, adminNavItems)}
           {hasOnboarding && renderGroup("AI Onboarding", FolderOpen, onboardingOpen, setOnboardingOpen, onboardingActive, onboardingNavItems)}
-          {hasSocial && renderGroup("AI Social", Share2, socialOpen, setSocialOpen, socialActive, socialNavItems)}
+          {hasSocial && isModuleEnabled("social") && renderGroup("AI Social", Share2, socialOpen, setSocialOpen, socialActive, socialNavItems)}
           {hasCompliance && renderGroup("AI Compliance", Shield, complianceOpen, setComplianceOpen, complianceActive, complianceNavItems)}
           {hasSafety && renderGroup("AI Safety", ShieldAlert, safetyOpen, setSafetyOpen, safetyActive, safetyNavItems)}
 

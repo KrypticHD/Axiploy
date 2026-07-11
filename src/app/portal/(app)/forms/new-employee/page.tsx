@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
@@ -24,6 +24,11 @@ export default function NewEmployeePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [selectedDocs, setSelectedDocs] = useState<string[]>(REQUIRED_DOCS.slice(0, 4));
+  const [sites, setSites] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/portal/sites").then((r) => (r.ok ? r.json() : null)).then((d) => { if (d?.sites) setSites(d.sites); }).catch(() => {});
+  }, []);
 
   function toggleDoc(doc: string) {
     setSelectedDocs((prev) =>
@@ -47,6 +52,7 @@ export default function NewEmployeePage() {
       startDate: data.get("startDate"),
       notes: data.get("notes"),
       requiredDocs: selectedDocs,
+      siteId: data.get("siteId") || null,
     };
     try {
       const res = await fetch("/api/portal/onboarding", {
@@ -115,6 +121,14 @@ export default function NewEmployeePage() {
             <div>
               <label className="text-text-muted text-xs mb-1.5 block">Manager *</label>
               <input name="manager" type="text" required placeholder="David Chen" className={inputClass} />
+            </div>
+            <div>
+              <label className="text-text-muted text-xs mb-1.5 block">Site</label>
+              <select name="siteId" className={inputClass}>
+                <option value="">No specific site</option>
+                {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <p className="text-text-muted/50 text-[11px] mt-1">Choosing a site + role resolves their requirement checklist automatically.</p>
             </div>
             <div className="sm:col-span-2">
               <label className="text-text-muted text-xs mb-1.5 block">Start Date *</label>

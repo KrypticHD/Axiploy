@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { sendEmail, emailWrapper } from "@/lib/email";
+import { resolveWorkerRequirements } from "@/lib/worker-readiness";
 
 function getSession(req: NextRequest) {
   const raw = req.cookies.get("axiploy_session")?.value;
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
   if (!session?.clientId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
   const body = await req.json();
-  const { name, email, phone, role, department, manager, startDate, notes, requiredDocs } = body;
+  const { name, email, phone, role, department, manager, startDate, notes, requiredDocs, siteId } = body;
 
   const { data, error } = await supabaseAdmin()
     .from("onboarding")
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
       role,
       department,
       manager,
+      site_id: siteId || null,
       start_date: startDate,
       notes,
       status: "Not Started",
@@ -37,6 +39,12 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Resolve applicable requirement templates for this client/site/role —
+  // this is what turns a bare "new employee" into a real readiness checklist.
+  if (siteId && role) {
+    resolveWorkerRequirements(session.clientId, data.id).catch(() => {});
+  }
 
   // Insert required documents
   if (requiredDocs?.length && data?.id) {

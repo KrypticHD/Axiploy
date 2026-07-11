@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getStaffReadinessForOne } from "@/lib/staff-readiness";
+import { calculateWorkerReadiness } from "@/lib/worker-readiness";
 
 function getClientId(req: NextRequest): string | null {
   const raw = req.cookies.get("axiploy_session")?.value;
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   if (!clientId) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
   const body = await req.json();
-  const { task_id, resource_type, staff_id, equipment_id, resource_name, start_date, end_date } = body;
+  const { task_id, resource_type, staff_id, equipment_id, resource_name, start_date, end_date, overrideReason } = body;
 
   if (!task_id || !resource_type || !resource_name || !start_date || !end_date) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
   if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
   const warnings: string[] = [];
+  let blockingReadiness: Awaited<ReturnType<typeof calculateWorkerReadiness>> | null = null;
 
   // Double-booking check — same resource, overlapping dates, different task
   if (staff_id || equipment_id) {
@@ -55,15 +56,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Site readiness check
+  // Worker readiness check — via the canonical engine, evaluated on the
+  // assignment's scheduled end date (not just today), per requirement.
   if (resource_type === "staff" && staff_id) {
-    const readiness = await getStaffReadinessForOne(clientId, staff_id);
-    if (readiness && readiness.overall !== "ready") {
-      warnings.push(
-        readiness.overall === "not_ready"
-          ? `${resource_name} is not site-ready (missing, expired, or unreviewed tickets).`
-          : `${resource_name} has tickets expiring soon — check Site Readiness before relying on this assignment.`
-      );
+    const readiness = await calculateWorkerReadiness(clientId, staff_id, { scheduledDate: end_date });
+    if (!readiness.isReady) {
+      blockingReadiness = readiness;
+      const summary = readiness.blockers.length
+        ? readiness.blockers.map((b) => `${b.requirementName} (${b.reason})`).join(", ")
+        : "not yet ready for this assignment date";
+      warnings.push(`${resource_name} is not ready for this date — ${summary}`);
     }
   }
 
@@ -84,6 +86,33 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Enforcement mode — only worker-readiness blockers are gated (not double-booking
+  // or equipment, which remain warn-and-allow regardless of the tenant setting).
+  if (blockingReadiness && blockingReadiness.blockers.length > 0) {
+    const { data: client } = await supabaseAdmin()
+      .from("clients")
+      .select("scheduling_enforcement_mode")
+      .eq("id", clientId)
+      .single();
+    const mode = client?.scheduling_enforcement_mode || "manager_override";
+
+    if (mode === "hard_block") {
+      return NextResponse.json({
+        error: "This worker cannot be scheduled — mandatory requirements are unresolved.",
+        blockers: blockingReadiness.blockers,
+        mode,
+      }, { status: 409 });
+    }
+
+    if (mode === "manager_override" && !overrideReason) {
+      return NextResponse.json({
+        requiresOverride: true,
+        blockers: blockingReadiness.blockers,
+        message: "This worker isn't ready for this date. Provide an override reason to proceed anyway.",
+      }, { status: 409 });
+    }
+  }
+
   const { data, error } = await supabaseAdmin()
     .from("task_assignments")
     .insert({
@@ -96,6 +125,7 @@ export async function POST(req: NextRequest) {
       resource_name,
       start_date,
       end_date,
+      readiness_override_reason: overrideReason || null,
     })
     .select()
     .single();
@@ -105,8 +135,8 @@ export async function POST(req: NextRequest) {
   await supabaseAdmin().from("activity_log").insert({
     client_id: clientId,
     digital_employee: "Scheduler",
-    action: `Resource assigned: ${resource_name}`,
-    details: warnings.length ? warnings.join(" · ") : "No conflicts detected",
+    action: overrideReason ? `Resource assigned with readiness override: ${resource_name}` : `Resource assigned: ${resource_name}`,
+    details: overrideReason ? `Override reason: ${overrideReason} · ${warnings.join(" · ")}` : (warnings.length ? warnings.join(" · ") : "No conflicts detected"),
     status: warnings.length ? "warning" : "success",
   });
 
